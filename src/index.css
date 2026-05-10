@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --figma-brand: #1b1464;
+    --figma-brand-weak: rgba(27, 20, 100, 0.05);
+
+    --figma-bg: #ffffff;
+    --figma-app-bg: #f5f6fa;
+    --figma-input-bg: #f4f3f1;
+
+    --figma-text: #474551;
+    --figma-text-muted: #787682;
+    --figma-text-strong: #1b1464;
+
+    --figma-stroke: rgba(200, 197, 210, 0.2);
+
+    /* Approximated from SVG drop shadow filters */
+    --figma-shadow-lg: 0 12px 32px rgba(27, 20, 100, 0.06);
+    --figma-shadow-card: 0 12px 32px rgba(27, 20, 100, 0.06);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--figma-app-bg);
+    color: var(--figma-text);
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      Segoe UI,
+      Roboto,
+      Helvetica,
+      Arial,
+      "Apple Color Emoji",
+      "Segoe UI Emoji";
+  }
+}
+
+@layer components {
+  .app-canvas {
+    border-radius: 16px;
+    background: var(--figma-bg);
+    box-shadow: var(--figma-shadow-lg);
+    border: 1px solid var(--figma-stroke);
+  }
+
+  .figma-card {
+    border-radius: 12px;
+    background: var(--figma-bg);
+    border: 1px solid var(--figma-stroke);
+    box-shadow: var(--figma-shadow-card);
+  }
+
+  .figma-input {
+    height: 44px;
+    border-radius: 8px;
+    background: var(--figma-input-bg);
+    border: 1px solid transparent;
+    outline: none;
+  }
+
+  .figma-input:focus {
+    border-color: rgba(27, 20, 100, 0.25);
+    box-shadow: 0 0 0 4px rgba(27, 20, 100, 0.08);
+  }
+
+  .btn-figma-primary {
+    height: 52px;
+    border-radius: 8px;
+    background: var(--figma-brand);
+    color: #fff;
+  }
+
+  .btn-figma-primary:hover {
+    filter: brightness(0.98);
+  }
+}
