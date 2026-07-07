@@ -13,6 +13,7 @@ const ROWS = [
     scheduled: 'Oct 24, 2023',
     actual: 'Oct 24, 2023',
     actualVariant: 'date',
+    failureReason: null,
   },
   {
     id: '#PAY-99280',
@@ -47,8 +48,9 @@ const ROWS = [
     amount: 1890.0,
     status: 'Failed',
     scheduled: 'Oct 22, 2023',
-    actual: 'Rejection',
+    actual: 'Failed',
     actualVariant: 'rejection',
+    failureReason: 'Insufficient funds in Stripe account',
   },
   {
     id: '#PAY-99276',
@@ -92,8 +94,9 @@ const ROWS = [
     amount: 915.4,
     status: 'Failed',
     scheduled: 'Oct 20, 2023',
-    actual: 'Rejection',
+    actual: 'Failed',
     actualVariant: 'rejection',
+    failureReason: 'Bank account closed',
   },
 ]
 
@@ -206,7 +209,7 @@ export default function Payouts() {
                   'Practitioner Name',
                   'Amount',
                   'Status',
-                  'Scheduled Date',
+                  'Requested',
                   'Actual Date',
                   'Action',
                 ].map((h) => (
@@ -251,9 +254,7 @@ export default function Payouts() {
                   </td>
                   <td className="px-4 py-4 sm:px-6">
                     {r.status === 'Failed' ? (
-                      <button type="button" className="text-sm font-semibold text-[var(--figma-brand)] underline underline-offset-2 hover:opacity-90">
-                        Retry
-                      </button>
+                      <span className="text-sm text-rose-600">{r.failureReason ?? 'Failed'}</span>
                     ) : (
                       <button
                         type="button"

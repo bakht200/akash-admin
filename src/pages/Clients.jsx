@@ -8,6 +8,7 @@ import {
   Users,
 } from 'lucide-react'
 import { clientListRows } from '../data/clientData'
+import { clientStatusClass, clientStatusLabel, formatShortUuid, CLIENT_STATUS_OPTIONS } from '../lib/display'
 
 const TOTAL_CLIENTS = 1248
 
@@ -28,10 +29,7 @@ function Avatar({ name }) {
 }
 
 function statusPill(status) {
-  return status === 'Active'
-    ? 'bg-emerald-50 text-emerald-700'
-
-    : 'bg-rose-50 text-rose-700'
+  return clientStatusClass(status)
 }
 
 export default function Clients() {
@@ -77,8 +75,11 @@ export default function Clients() {
                   className="h-11 w-full rounded-[12px] border border-[var(--figma-stroke)] bg-white px-3 text-sm font-medium text-[var(--figma-text-strong)] focus:outline-none focus:ring-2 focus:ring-[rgba(27,20,100,0.12)]"
                 >
                   <option value="all">STATUS: All Statuses</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                  {CLIENT_STATUS_OPTIONS.map((s) => (
+                    <option key={s} value={s}>
+                      {clientStatusLabel(s)}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -150,7 +151,7 @@ export default function Clients() {
                       <Avatar name={c.name} />
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-[var(--figma-brand)]">{c.name}</div>
-                        <div className="truncate text-xs text-[var(--figma-text-muted)]">ID: {c.id}</div>
+                        <div className="truncate text-xs text-[var(--figma-text-muted)]">ID: {formatShortUuid(c.id)}</div>
                       </div>
                     </div>
                   </td>
@@ -171,7 +172,7 @@ export default function Clients() {
                         ' ',
                       )}
                     >
-                      {c.status.toUpperCase()}
+                      {clientStatusLabel(c.status).toUpperCase()}
                     </span>
                   </td>
                   <td className="px-4 py-4 sm:px-6">
@@ -264,11 +265,15 @@ export default function Clients() {
               <div className="mt-2 text-2xl font-semibold tracking-tight">+128</div>
             </div>
             <div>
-              <div className="text-[11px] font-semibold tracking-[0.16em] text-white/70">CHURN RATE</div>
+              <div className="text-[11px] font-semibold tracking-[0.16em] text-white/70" title="Share of clients inactive 30+ days">
+                30-DAY INACTIVITY RATE
+              </div>
               <div className="mt-2 text-2xl font-semibold tracking-tight">2.4%</div>
             </div>
             <div>
-              <div className="text-[11px] font-semibold tracking-[0.16em] text-white/70">LIFETIME VALUE</div>
+              <div className="text-[11px] font-semibold tracking-[0.16em] text-white/70" title="Average total client spend">
+                AVG. TOTAL CLIENT SPEND
+              </div>
               <div className="mt-2 text-2xl font-semibold tracking-tight">$1,142</div>
             </div>
           </div>
@@ -288,14 +293,14 @@ export default function Clients() {
             <li className="flex gap-3">
               <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--figma-brand)]" />
               <div>
-                <div className="text-sm font-medium text-[var(--figma-text-strong)]">Elena Rodriguez updated profile photo</div>
+                <div className="text-sm font-medium text-[var(--figma-text-strong)]">Elena Vasquez left a review</div>
                 <div className="text-xs text-[var(--figma-text-muted)]">1 hour ago</div>
               </div>
             </li>
             <li className="flex gap-3">
-              <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-400" />
+              <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-sky-400" />
               <div>
-                <div className="text-sm font-medium text-[var(--figma-text-strong)]">System flagged 1 dispute</div>
+                <div className="text-sm font-medium text-[var(--figma-text-strong)]">Priya Nair signed up</div>
                 <div className="text-xs text-[var(--figma-text-muted)]">3 hours ago</div>
               </div>
             </li>

@@ -17,8 +17,11 @@ import {
   Wallet,
   X,
 } from 'lucide-react'
-import { setAuthed } from '../auth/auth'
+import { setAuthed, getCurrentUser } from '../auth/auth'
+import { canReadFinancials } from '../lib/permissions'
 import AppLogo from './AppLogo'
+
+const FINANCIAL_PATHS = new Set(['/revenue', '/transactions', '/payouts', '/wallet'])
 
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
@@ -26,10 +29,10 @@ const nav = [
   { to: '/clients', label: 'Clients', icon: Users },
   { to: '/modalities', label: 'Modalities', icon: Layers },
   { to: '/sessions', label: 'Sessions', icon: CalendarDays },
-  { to: '/revenue', label: 'Revenue', icon: CircleDollarSign },
-  { to: '/transactions', label: 'Transactions', icon: CreditCard },
-  { to: '/payouts', label: 'Payouts', icon: HandCoins },
-  { to: '/wallet', label: 'Wallet', icon: Wallet },
+  { to: '/revenue', label: 'Revenue', icon: CircleDollarSign, financial: true },
+  { to: '/transactions', label: 'Transactions', icon: CreditCard, financial: true },
+  { to: '/payouts', label: 'Payouts', icon: HandCoins, financial: true },
+  { to: '/wallet', label: 'Wallet', icon: Wallet, financial: true },
   { to: '/reviews', label: 'Reviews', icon: Star },
   { to: '/notifications', label: 'Notifications', icon: Bell },
   { to: '/settings', label: 'Settings', icon: Settings },
@@ -75,9 +78,12 @@ function Item({ to, label, icon: Icon, disabled }) {
 
 export default function Sidebar({ mobileOpen, onMobileClose }) {
   const navigate = useNavigate()
+  const user = getCurrentUser()
+  const showFinancial = canReadFinancials()
+  const visibleNav = nav.filter((item) => !item.financial || showFinancial)
 
   function logout() {
-    setAuthed(false)
+    setAuthed(null)
     navigate('/login', { replace: true })
   }
 
@@ -90,7 +96,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
        
 
         <div className="mt-7 space-y-1">
-          {nav.map((i) => (
+          {visibleNav.map((i) => (
             <Item key={i.to} {...i} />
           ))}
         </div>
@@ -101,8 +107,8 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
               <UserRound className="h-4 w-4 text-[var(--figma-text-muted)]" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold text-[var(--figma-text-strong)]">Admin User</div>
-              <div className="truncate text-xs text-[var(--figma-text-muted)]">admin@akash.com</div>
+              <div className="truncate text-sm font-semibold text-[var(--figma-text-strong)]">{user?.name ?? 'Admin User'}</div>
+              <div className="truncate text-xs text-[var(--figma-text-muted)]">{user?.email ?? 'admin@akash.com'}</div>
             </div>
           </div>
           <button
@@ -135,7 +141,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
           </div>
 
           <div className="mt-7 space-y-1" onClick={onMobileClose}>
-            {nav.map((i) => (
+            {visibleNav.map((i) => (
               <Item key={i.to} {...i} />
             ))}
           </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bell, CalendarDays, ChevronLeft, ChevronRight, Mail, Smartphone } from 'lucide-react'
+import { Bell, CalendarDays, ChevronLeft, ChevronRight, Mail } from 'lucide-react'
 
 const TOTAL_LOGS = 12842
 const PER_PAGE = 50
@@ -13,15 +13,15 @@ const LOG_ROWS = [
     channel: 'Email',
     event: 'Booking Confirmation',
     eventTone: 'brand',
-    status: 'Read',
-    deliveryTone: 'read',
+    status: 'Sent',
+    deliveryTone: 'sent',
   },
   {
     id: '2',
     ts: 'Oct 24, 2023',
     tsTime: '13:05:44 UTC',
-    recipient: { name: 'Dr. James Chen', detail: '+1 (415) 555-0192', initials: 'JC', tone: 'bg-violet-100 text-violet-800' },
-    channel: 'SMS',
+    recipient: { name: 'Dr. James Chen', detail: 'Device token · Android', initials: 'JC', tone: 'bg-violet-100 text-violet-800' },
+    channel: 'Push',
     event: 'Reminder',
     eventTone: 'amber',
     status: 'Sent',
@@ -33,8 +33,8 @@ const LOG_ROWS = [
     tsTime: '09:12:18 UTC',
     recipient: { name: 'Marcus Webb', detail: 'Device token · iOS', initials: 'MW', tone: 'bg-emerald-100 text-emerald-800' },
     channel: 'Push',
-    event: 'Policy Update',
-    eventTone: 'slate',
+    event: 'Booking Confirmation',
+    eventTone: 'brand',
     status: 'Failed',
     deliveryTone: 'failed',
   },
@@ -64,10 +64,10 @@ const LOG_ROWS = [
     id: '6',
     ts: 'Oct 23, 2023',
     tsTime: '08:55:12 UTC',
-    recipient: { name: 'David Okonkwo', detail: '+44 7700 900123', initials: 'DO', tone: 'bg-slate-200 text-slate-800' },
-    channel: 'SMS',
-    event: 'Policy Update',
-    eventTone: 'slate',
+    recipient: { name: 'David Okonkwo', detail: 'david.o@email.com', initials: 'DO', tone: 'bg-slate-200 text-slate-800' },
+    channel: 'Email',
+    event: 'Reminder',
+    eventTone: 'amber',
     status: 'Failed',
     deliveryTone: 'failed',
   },
@@ -88,7 +88,6 @@ function deliveryPill(tone) {
 
 function ChannelIcon({ channel }) {
   const cls = 'h-4 w-4 shrink-0 text-[var(--figma-text-muted)]'
-  if (channel === 'SMS') return <Smartphone className={cls} />
   if (channel === 'Push') return <Bell className={cls} />
   return <Mail className={cls} />
 }
@@ -115,14 +114,13 @@ export default function Notifications() {
           <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">SUCCESS RATE</div>
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <span className="text-2xl font-semibold text-[var(--figma-text-strong)] sm:text-3xl">99.2%</span>
-            <span className="mb-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">Above benchmark</span>
           </div>
         </div>
         <div className="figma-card p-5 shadow-sm sm:p-6">
           <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">FAILED DELIVERY</div>
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <span className="text-2xl font-semibold text-rose-700 sm:text-3xl">104</span>
-            <span className="mb-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-800">Needs review</span>
+            <span className="mb-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-800">30d</span>
           </div>
         </div>
         <div className="figma-card flex flex-col justify-between p-5 sm:p-6">
@@ -168,7 +166,6 @@ export default function Notifications() {
               <select className="h-11 rounded-[12px] border border-[var(--figma-stroke)] bg-white px-3 text-sm font-medium text-[var(--figma-text-strong)] focus:outline-none focus:ring-2 focus:ring-[rgba(27,20,100,0.12)]">
                 <option>All</option>
                 <option>Email</option>
-                <option>SMS</option>
                 <option>Push</option>
               </select>
             </label>
@@ -178,7 +175,6 @@ export default function Notifications() {
                 <option>All</option>
                 <option>Booking Confirmation</option>
                 <option>Reminder</option>
-                <option>Policy Update</option>
               </select>
             </label>
           </div>
@@ -238,7 +234,7 @@ export default function Notifications() {
                     </span>
                   </td>
                   <td className="px-4 py-4 sm:px-6">
-                    {r.status === 'Failed' ? (
+                    {(r.status === 'Failed' && (r.channel === 'Email' || r.channel === 'Push')) ? (
                       <button
                         type="button"
                         className="text-[11px] font-semibold tracking-[0.12em] text-[var(--figma-brand)] underline underline-offset-2 hover:opacity-90"

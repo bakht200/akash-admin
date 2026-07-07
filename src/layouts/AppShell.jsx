@@ -9,7 +9,7 @@ const PAGE_META = [
     title: 'Executive Ledger',
     subtitle: 'Track key performance metrics and practitioner earnings.',
     actions: {
-      secondary: { label: 'EXPORT REPORT', icon: 'download' },
+      secondary: { label: 'Download Report', icon: 'download' },
     },
   },
   {
@@ -22,12 +22,6 @@ const PAGE_META = [
   },
   {
     path: '/practitioners/:id',
-    title: '',
-    subtitle: '',
-    actions: null,
-  },
-  {
-    path: '/practitioners/:id/verification',
     title: '',
     subtitle: '',
     actions: null,
@@ -51,8 +45,7 @@ const PAGE_META = [
     title: 'Sessions',
     subtitle: 'Monitor and manage all practitioner-client interactions.',
     actions: {
-      secondary: { label: 'Export List', icon: 'download', variant: 'outline' },
-      primary: { label: 'Manual Booking', icon: 'plus' },
+      secondary: { label: 'Export CSV', icon: 'download', variant: 'outline' },
     },
   },
   {
@@ -81,7 +74,6 @@ const PAGE_META = [
     subtitle: 'Individual transactions, payouts, refunds, and settlement status.',
     actions: {
       secondary: { label: 'Export CSV', icon: 'download', variant: 'outline' },
-      primary: { label: 'Manual Entry', icon: 'plus' },
     },
   },
   {
@@ -89,8 +81,7 @@ const PAGE_META = [
     title: 'Payouts',
     subtitle: 'Manage and reconcile practitioner distributions.',
     actions: {
-      secondary: { label: 'Download Payout Report', icon: 'download' },
-      primary: { label: 'Manually Trigger Payout', icon: 'refresh' },
+      secondary: { label: 'Export CSV', icon: 'download' },
     },
   },
   {
@@ -99,7 +90,6 @@ const PAGE_META = [
     subtitle: 'Manage your platform liquidity and payout reserves.',
     actions: {
       secondary: { label: 'Export Statement', icon: 'download', variant: 'outline' },
-      primary: { label: 'Initiate Payout', icon: 'plus' },
     },
   },
   {
@@ -107,14 +97,13 @@ const PAGE_META = [
     title: 'Review Management',
     subtitle: 'Moderate ratings, resolve flags, and enforce publication policy.',
     actions: {
-      secondary: { label: 'Export Ledger', icon: 'download' },
-      primary: { label: 'Manual Entry', icon: 'plus' },
+      secondary: { label: 'Export CSV', icon: 'download' },
     },
   },
   {
     path: '/notifications',
     title: 'Notification Logs',
-    subtitle: 'Monitor SMS, Email, and Push delivery for all user activities.',
+    subtitle: 'Monitor Email and Push delivery for all user activities.',
     actions: {
       secondary: { label: 'Export Logs', icon: 'download', variant: 'outline' },
       primary: { label: 'Live Refresh', icon: 'refresh' },
@@ -123,6 +112,26 @@ const PAGE_META = [
   { path: '/users', title: 'Users', subtitle: 'Manage users and roles.' },
   { path: '/settings', title: 'Settings', subtitle: 'Update your account preferences.' },
 ]
+
+const HIDE_SEARCH_PATHS = new Set(['/dashboard', '/revenue', '/wallet'])
+
+function getSearchPlaceholder(pathname) {
+  if (pathname === '/practitioners' || /^\/practitioners\/[^/]+$/.test(pathname)) {
+    return 'Search practitioners…'
+  }
+  if (pathname === '/sessions' || /^\/sessions\/[^/]+$/.test(pathname)) {
+    return 'Search sessions…'
+  }
+  if (pathname === '/clients' || /^\/clients\/[^/]+$/.test(pathname)) {
+    return 'Search clients…'
+  }
+  if (pathname === '/modalities') return 'Search modalities…'
+  if (pathname === '/notifications') return 'Search notification records…'
+  if (pathname === '/transactions') return 'Search transactions…'
+  if (pathname === '/payouts') return 'Search payouts…'
+  if (pathname === '/reviews') return 'Search reviews…'
+  return 'Search records…'
+}
 
 export default function AppShell() {
   const location = useLocation()
@@ -141,10 +150,6 @@ export default function AppShell() {
       return PAGE_META.find((m) => m.path === '/sessions/:id') ?? { title: '', subtitle: '', actions: null }
     }
 
-    if (/^\/practitioners\/[^/]+\/verification$/.test(pathname)) {
-      return PAGE_META.find((m) => m.path === '/practitioners/:id/verification') ?? { title: '', subtitle: '', actions: null }
-    }
-
     if (pathname.startsWith('/practitioners/')) {
       return PAGE_META.find((m) => m.path === '/practitioners/:id') ?? { title: 'My Portal', subtitle: '' }
     }
@@ -152,25 +157,8 @@ export default function AppShell() {
     return { title: 'My Portal', subtitle: '' }
   }, [location.pathname])
 
-  const searchPlaceholder = /^\/practitioners\/[^/]+\/verification$/.test(location.pathname)
-    ? 'Search practitioners…'
-    : location.pathname === '/sessions' || /^\/sessions\/.+/.test(location.pathname)
-      ? 'Search sessions, users, or transactions…'
-    : location.pathname === '/clients' || /^\/clients\/.+/.test(location.pathname)
-      ? 'Search practitioners, clients, or transactions…'
-      : location.pathname === '/modalities'
-        ? 'Search modalities…'
-      : location.pathname === '/notifications'
-        ? 'Search notification records…'
-      : location.pathname === '/revenue' || location.pathname === '/transactions'
-        ? 'Search transactions, payouts, or reports…'
-      : location.pathname === '/payouts'
-        ? 'Search payouts or practitioners…'
-      : location.pathname === '/wallet'
-        ? 'Search wallet movements…'
-      : location.pathname === '/reviews'
-        ? 'Search reviews, clients or practitioners…'
-        : 'SEARCH RECORDS...'
+  const showSearch = !HIDE_SEARCH_PATHS.has(location.pathname)
+  const searchPlaceholder = getSearchPlaceholder(location.pathname)
 
   return (
     <div className="min-h-dvh bg-[var(--figma-app-bg)] text-[var(--figma-text)]">
@@ -184,6 +172,7 @@ export default function AppShell() {
               subtitle={meta.subtitle}
               actions={meta.actions}
               searchPlaceholder={searchPlaceholder}
+              showSearch={showSearch}
               onOpenSidebar={() => setMobileSidebarOpen(true)}
             />
 
@@ -196,4 +185,3 @@ export default function AppShell() {
     </div>
   )
 }
-

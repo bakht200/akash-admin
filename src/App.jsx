@@ -1,11 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import RequireAuth from './auth/RequireAuth'
+import FinancialRoute from './auth/FinancialRoute'
 import AppShell from './layouts/AppShell'
 import Login from './pages/Login'
+import Forbidden from './pages/Forbidden'
 import Dashboard from './pages/Dashboard'
 import Practitioners from './pages/Practitioners'
 import PractitionerDetail from './pages/PractitionerDetail'
-import PractitionerVerification from './pages/PractitionerVerification'
 import Clients from './pages/Clients'
 import ClientDetail from './pages/ClientDetail'
 import Modalities from './pages/Modalities'
@@ -30,18 +31,20 @@ function App() {
         <Route element={<RequireAuth />}>
           <Route element={<AppShell />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/forbidden" element={<Forbidden />} />
             <Route path="/practitioners" element={<Practitioners />} />
-            <Route path="/practitioners/:id/verification" element={<PractitionerVerification />} />
             <Route path="/practitioners/:id" element={<PractitionerDetail />} />
             <Route path="/clients" element={<Clients />} />
             <Route path="/clients/:id" element={<ClientDetail />} />
             <Route path="/modalities" element={<Modalities />} />
             <Route path="/sessions" element={<Sessions />} />
             <Route path="/sessions/:id" element={<SessionDetail />} />
-            <Route path="/revenue" element={<Revenue />} />
-            <Route path="/transactions" element={<Transactions />} />
-            <Route path="/payouts" element={<Payouts />} />
-            <Route path="/wallet" element={<Wallet />} />
+            <Route element={<FinancialRoute />}>
+              <Route path="/revenue" element={<Revenue />} />
+              <Route path="/transactions" element={<Transactions />} />
+              <Route path="/payouts" element={<Payouts />} />
+              <Route path="/wallet" element={<Wallet />} />
+            </Route>
             <Route path="/reviews" element={<Reviews />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/users" element={<Users />} />

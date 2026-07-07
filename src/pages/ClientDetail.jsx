@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   Calendar,
@@ -14,6 +14,8 @@ import {
   X,
 } from 'lucide-react'
 import { getClientRecordOrFallback } from '../data/clientData'
+import ReasonModal from '../components/modals/ReasonModal'
+import { clientStatusClass, clientStatusLabel, formatShortUuid } from '../lib/display'
 
 function Avatar({ name, className = 'h-16 w-16 text-lg' }) {
   const initials = name
@@ -50,6 +52,7 @@ function sessionStatusClass(s) {
 export default function ClientDetail() {
   const { id } = useParams()
   const c = useMemo(() => getClientRecordOrFallback(id), [id])
+  const [suspendOpen, setSuspendOpen] = useState(false)
 
   return (
     <div className="space-y-6">
@@ -73,7 +76,7 @@ export default function ClientDetail() {
                 </span>
                 <span className="inline-flex items-center gap-2">
                   <Hash className="h-4 w-4 shrink-0" />
-                  <span className="font-medium text-[var(--figma-text-strong)]">{c.id}</span>
+                  <span className="font-medium text-[var(--figma-text-strong)]">{formatShortUuid(c.id)}</span>
                 </span>
                 <span className="inline-flex items-center gap-2">
                   <Calendar className="h-4 w-4 shrink-0" />
@@ -92,10 +95,10 @@ export default function ClientDetail() {
                 <span
                   className={[
                     'inline-flex rounded-[10px] px-2.5 py-1 text-[11px] font-semibold',
-                    c.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700',
+                    clientStatusClass(c.status),
                   ].join(' ')}
                 >
-                  {c.status.toUpperCase()}
+                  {clientStatusLabel(c.status).toUpperCase()}
                 </span>
               </div>
             </div>
@@ -111,6 +114,7 @@ export default function ClientDetail() {
           </button>
           <button
             type="button"
+            onClick={() => setSuspendOpen(true)}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-rose-200 bg-white px-4 text-[11px] font-semibold tracking-[0.12em] text-rose-700 hover:bg-rose-50"
           >
             <CircleSlash className="h-4 w-4" />
@@ -118,18 +122,29 @@ export default function ClientDetail() {
           </button>
           <button
             type="button"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-[var(--figma-brand)] px-4 text-[11px] font-semibold tracking-[0.12em] text-white shadow-[0_1px_2px_rgba(0,0,0,0.06)] hover:brightness-[0.98]"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-emerald-200 bg-emerald-50 px-4 text-[11px] font-semibold tracking-[0.12em] text-emerald-800 hover:brightness-[0.98]"
           >
             <Power className="h-4 w-4" />
-            DEACTIVATE
+            REACTIVATE
           </button>
         </div>
       </div>
 
+      <ReasonModal
+        open={suspendOpen}
+        title="Suspend client"
+        message="This will stop the client from using the platform. A reason is required."
+        confirmLabel="Suspend"
+        onCancel={() => setSuspendOpen(false)}
+        onConfirm={() => setSuspendOpen(false)}
+      />
+
       {/* KPIs */}
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="figma-card p-5 sm:p-6">
-          <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">LIFETIME VALUE</div>
+          <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]" title="Average total client spend">
+            AVERAGE TOTAL CLIENT SPEND
+          </div>
           <div className="mt-2 flex items-start justify-between gap-3">
             <div>
               <div className="text-2xl font-semibold text-[var(--figma-brand)]">

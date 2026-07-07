@@ -1,7 +1,14 @@
 import { Bell, CircleHelp, Download, Menu, Plus, RefreshCw, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
-export default function Topbar({ title, subtitle, onOpenSidebar, actions, searchPlaceholder = 'SEARCH RECORDS...' }) {
+export default function Topbar({
+  title,
+  subtitle,
+  onOpenSidebar,
+  actions,
+  searchPlaceholder = 'SEARCH RECORDS...',
+  showSearch = true,
+}) {
   const navigate = useNavigate()
   const secondary = actions?.secondary
   const primary = actions?.primary
@@ -22,13 +29,17 @@ export default function Topbar({ title, subtitle, onOpenSidebar, actions, search
             <Menu className="h-5 w-5" />
           </button>
 
-          <div className="relative w-full min-w-0 flex-1 sm:max-w-md lg:max-w-xl xl:max-w-2xl">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[var(--figma-text)]" />
-            <input
-              placeholder={searchPlaceholder}
-              className="h-[35px] w-full rounded border border-transparent bg-white pl-11 pr-4 text-[12px] font-medium tracking-wide text-[var(--figma-text)] placeholder:font-medium placeholder:tracking-wide placeholder:text-[rgba(71,69,81,0.5)] focus:outline-none focus:ring-2 focus:ring-[rgba(27,20,100,0.14)]"
-            />
-          </div>
+          {showSearch ? (
+            <div className="relative w-full min-w-0 flex-1 sm:max-w-md lg:max-w-xl xl:max-w-2xl">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[var(--figma-text)]" />
+              <input
+                placeholder={searchPlaceholder}
+                className="h-[35px] w-full rounded border border-transparent bg-white pl-11 pr-4 text-[12px] font-medium tracking-wide text-[var(--figma-text)] placeholder:font-medium placeholder:tracking-wide placeholder:text-[rgba(71,69,81,0.5)] focus:outline-none focus:ring-2 focus:ring-[rgba(27,20,100,0.14)]"
+              />
+            </div>
+          ) : (
+            <div className="min-w-0 flex-1" />
+          )}
 
           <div className="hidden flex-1 items-center lg:ml-4 lg:flex lg:justify-start">
             <span className="relative text-xs font-semibold tracking-wide text-[var(--figma-text-strong)]">

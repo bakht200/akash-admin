@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Download, MoreHorizontal } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 /** Week view: Mon–Sun; index 3 = Thursday highlight */
@@ -8,15 +8,11 @@ const DAILY_MAX = Math.max(...DAILY_BARS)
 const DAILY_CHART_PX = 80
 
 const LEDGER_PREVIEW = [
-  { date: 'Oct 24, 2023', sessions: 142, fees: 4280.5, status: 'Settled' },
-  { date: 'Oct 23, 2023', sessions: 138, fees: 4120.25, status: 'Settled' },
-  { date: 'Oct 22, 2023', sessions: 131, fees: 3890.0, status: 'Processing' },
-  { date: 'Oct 21, 2023', sessions: 128, fees: 3755.75, status: 'Settled' },
+  { date: 'Oct 24, 2023', sessions: 142, fees: 4280.5 },
+  { date: 'Oct 23, 2023', sessions: 138, fees: 4120.25 },
+  { date: 'Oct 22, 2023', sessions: 131, fees: 3890.0 },
+  { date: 'Oct 21, 2023', sessions: 128, fees: 3755.75 },
 ]
-
-function ledgerStatusClass(s) {
-  return s === 'Settled' ? 'bg-emerald-50 text-emerald-800' : 'bg-sky-50 text-sky-800'
-}
 
 export default function Revenue() {
   const linePath = useMemo(() => {
@@ -58,7 +54,7 @@ export default function Revenue() {
             className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-[10px] bg-[var(--figma-brand)] px-4 text-[11px] font-semibold tracking-[0.14em] text-white shadow-[0_1px_2px_rgba(0,0,0,0.06)] hover:brightness-[0.98]"
           >
             <Download className="h-4 w-4" />
-            Export Report
+            Download Report
           </button>
         </div>
       </div>
@@ -70,7 +66,7 @@ export default function Revenue() {
             <div className="min-w-0">
               <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">TOTAL PLATFORM FEES</div>
               <div className="mt-2 text-2xl font-semibold tracking-tight text-[var(--figma-text-strong)]">$142,500</div>
-              <div className="mt-1 text-xs text-[var(--figma-text-muted)]">Net processing revenue after gas fees.</div>
+              <div className="mt-1 text-xs text-[var(--figma-text-muted)]">Commission + platform fee + client service fee.</div>
             </div>
             <span className="inline-flex shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
               +12.4%
@@ -92,9 +88,9 @@ export default function Revenue() {
         <div className="figma-card p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">PROJECTED REVENUE</div>
+              <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">RUN-RATE (ANNUALIZED)</div>
               <div className="mt-2 text-2xl font-semibold tracking-tight text-[var(--figma-text-strong)]">$1.8M</div>
-              <div className="mt-1 text-xs text-[var(--figma-text-muted)]">Based on current run-rate active volume.</div>
+              <div className="mt-1 text-xs text-[var(--figma-text-muted)]">Current 30-day platform revenue × 12.</div>
             </div>
             <span className="inline-flex shrink-0 rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-800">
               ANNUAL
@@ -107,7 +103,7 @@ export default function Revenue() {
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <div className="figma-card p-5 sm:p-6 lg:col-span-8">
           <div className="text-sm font-semibold text-[var(--figma-text-strong)]">Cumulative Revenue Curve</div>
-          <div className="mt-1 text-xs text-[var(--figma-text-muted)]">Trailing twelve months (indexed)</div>
+          <div className="mt-1 text-xs text-[var(--figma-text-muted)]">Running total over selected range</div>
           <div className="mt-4 w-full overflow-x-auto">
             <svg viewBox={`0 0 ${linePath.w} ${linePath.h}`} className="h-[220px] w-full min-w-[520px]" preserveAspectRatio="none">
               <defs>
@@ -174,13 +170,6 @@ export default function Revenue() {
         <div className="figma-card flex flex-col p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3">
             <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--figma-text-strong)]">Daily Revenue Volume</h2>
-            <button
-              type="button"
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px] text-[var(--figma-text-strong)] hover:bg-[var(--figma-input-bg)]"
-              aria-label="More options"
-            >
-              <MoreHorizontal className="h-5 w-5" />
-            </button>
           </div>
           <div className="mt-5 w-full min-w-0">
             <div
@@ -232,9 +221,6 @@ export default function Revenue() {
                   <th className="pb-4 pr-4 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--figma-text-muted)]">
                     Net Platform Fees
                   </th>
-                  <th className="pb-4 text-right text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--figma-text-muted)]">
-                    Status
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -244,15 +230,6 @@ export default function Revenue() {
                     <td className="py-4 pr-4 align-middle text-sm font-normal text-[var(--figma-text)]">{r.sessions}</td>
                     <td className="py-4 pr-4 align-middle text-sm font-bold text-[var(--figma-text-strong)]">
                       ${r.fees.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="py-4 align-middle text-right">
-                      <span
-                        className={['inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold', ledgerStatusClass(r.status)].join(
-                          ' ',
-                        )}
-                      >
-                        {r.status.toUpperCase()}
-                      </span>
                     </td>
                   </tr>
                 ))}

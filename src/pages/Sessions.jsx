@@ -2,6 +2,13 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { SESSION_LIST_ROWS, SESSION_TOTAL } from '../data/sessionData'
+import {
+  formatShortUuid,
+  normalizeSessionStatus,
+  sessionStatusClass,
+  sessionStatusLabel,
+  SESSION_STATUS_OPTIONS,
+} from '../lib/display'
 
 function Avatar({ name }) {
   const initials = name
@@ -19,21 +26,7 @@ function Avatar({ name }) {
 }
 
 function statusPill(status) {
-  const u = status.toUpperCase()
-  switch (u) {
-    case 'UPCOMING':
-      return 'bg-sky-50 text-sky-800 ring-1 ring-sky-200/80'
-    case 'ACTIVE':
-      return 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80'
-    case 'DISPUTED':
-      return 'bg-amber-50 text-amber-900 ring-1 ring-amber-200/80'
-    case 'CANCELLED':
-      return 'bg-rose-50 text-rose-800 ring-1 ring-rose-200/80'
-    case 'COMPLETED':
-      return 'bg-teal-50 text-teal-800 ring-1 ring-teal-200/80'
-    default:
-      return 'bg-slate-100 text-slate-700'
-  }
+  return sessionStatusClass(status)
 }
 
 export default function Sessions() {
@@ -62,11 +55,9 @@ export default function Sessions() {
               STATUS
               <select className="h-10 rounded-[10px] border border-[var(--figma-stroke)] bg-white px-3 text-sm font-medium text-[var(--figma-text-strong)] focus:outline-none focus:ring-2 focus:ring-[rgba(27,20,100,0.12)]">
                 <option>All Statuses</option>
-                <option>Upcoming</option>
-                <option>Active</option>
-                <option>Completed</option>
-                <option>Disputed</option>
-                <option>Cancelled</option>
+                {SESSION_STATUS_OPTIONS.map((s) => (
+                  <option key={s}>{sessionStatusLabel(s)}</option>
+                ))}
               </select>
             </label>
             <label className="flex flex-col gap-1 text-[10px] font-semibold tracking-[0.12em] text-[var(--figma-text-muted)] sm:min-w-[160px]">
@@ -116,7 +107,7 @@ export default function Sessions() {
                     }
                   }}
                 >
-                  <td className="px-4 py-4 text-sm font-semibold text-[var(--figma-brand)] sm:px-6">{r.id}</td>
+                  <td className="px-4 py-4 text-sm font-semibold text-[var(--figma-brand)] sm:px-6">{formatShortUuid(r.id)}</td>
                   <td className="px-4 py-4 text-sm text-[var(--figma-text)] sm:px-6">{r.dateTime}</td>
                   <td className="px-4 py-4 sm:px-6">
                     <div className="flex items-center gap-2">
@@ -138,13 +129,13 @@ export default function Sessions() {
                         statusPill(r.status),
                       ].join(' ')}
                     >
-                      {r.status === 'Active' ? (
+                      {normalizeSessionStatus(r.status) === 'in_progress' ? (
                         <span className="relative flex h-2 w-2">
                           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                           <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                         </span>
                       ) : null}
-                      {r.status.toUpperCase()}
+                      {sessionStatusLabel(r.status).toUpperCase()}
                     </span>
                   </td>
                   <td className="px-4 py-4 text-sm font-medium text-[var(--figma-text)] sm:px-6">
@@ -236,7 +227,7 @@ export default function Sessions() {
             {[
               { label: 'Completed', pct: 72, tone: 'bg-teal-600' },
               { label: 'Cancelled', pct: 14, tone: 'bg-slate-400' },
-              { label: 'Disputed', pct: 4, tone: 'bg-amber-500' },
+              { label: 'No Show', pct: 4, tone: 'bg-amber-500' },
             ].map((s) => (
               <div key={s.label}>
                 <div className="flex items-center justify-between text-sm font-medium text-[var(--figma-text-strong)]">

@@ -10,7 +10,7 @@ export const PRACTITIONER_RECORDS = {
       name: 'Dr. Elena Rodriguez',
       email: 'elena.r@akash.life',
       modalities: ['Acupuncture', 'Reiki'],
-      status: 'Active',
+      status: 'active',
       rating: 4.9,
       sessions: 142,
       earnings: 8520,
@@ -18,9 +18,9 @@ export const PRACTITIONER_RECORDS = {
     },
     profile: {
       name: 'Elena Rodriguez, PhD',
-      idLabel: 'PRAC-99283-ER',
+      uuid: 'p9928300-0000-4000-8000-000000099283',
       joined: 'Oct 12, 2023',
-      status: 'Active',
+      status: 'active',
       bio:
         'Dr. Rodriguez is a clinical psychologist specializing in holistic wellness and somatic therapy. With over 15 years of experience, she integrates traditional psychotherapeutic techniques with mindfulness and body-centered approaches to help clients manage anxiety and professional burnout.',
       specialties: ['Somatic Therapy', 'CBT', 'Mindfulness'],
@@ -36,8 +36,8 @@ export const PRACTITIONER_RECORDS = {
         { name: 'Liability Insurance.pdf', meta: 'Exp: Jan 2025', status: 'Verified' },
       ],
       reviews: [
-        { stars: 5, quote: 'Dr. Elena is incredibly perceptive and has helped me navigate high-stress periods…', meta: 'Client ID: 8219 • 2 days ago' },
-        { stars: 5, quote: 'Grounded, compassionate, and practical. The sessions feel structured but warm.', meta: 'Client ID: 6401 • 2 weeks ago' },
+        { stars: 5, quote: 'Dr. Elena is incredibly perceptive and has helped me navigate high-stress periods…', clientName: 'Marcus Chen', clientLink: '/clients/c1042100-0000-4000-8000-000000010421', meta: '2 days ago' },
+        { stars: 5, quote: 'Grounded, compassionate, and practical. The sessions feel structured but warm.', clientName: 'Elena Vasquez', clientLink: '/clients/c1038800-0000-4000-8000-000000010388', meta: '2 weeks ago' },
       ],
       recentSessions: [
         { client: 'Marcus Aurelius', date: 'Mar 24, 2024', type: 'Virtual Therapy', fee: 85, status: 'Completed' },
@@ -72,7 +72,7 @@ export const PRACTITIONER_RECORDS = {
       name: 'James T. Sterling',
       email: 'j.sterling@zenith.com',
       modalities: ['CBT Therapy'],
-      status: 'Pending',
+      status: 'onboarding_incomplete',
       rating: null,
       sessions: 0,
       earnings: 0,
@@ -80,9 +80,9 @@ export const PRACTITIONER_RECORDS = {
     },
     profile: {
       name: 'James T. Sterling, LCSW',
-      idLabel: 'PRAC-41022-JS',
+      uuid: 'p4102200-0000-4000-8000-000000041022',
       joined: 'Feb 03, 2024',
-      status: 'Pending',
+      status: 'onboarding_incomplete',
       bio:
         'James is a licensed clinical social worker focused on evidence-based therapy for anxiety and relationship conflict. He is currently completing onboarding verification for the Akash network.',
       specialties: ['CBT', 'Attachment', 'Stress Management'],
@@ -127,7 +127,7 @@ export const PRACTITIONER_RECORDS = {
       name: 'Sarah Al-Fayed',
       email: 'sarah@akash.life',
       modalities: ['Holistic Nutrition'],
-      status: 'Active',
+      status: 'active',
       rating: 4.7,
       sessions: 88,
       earnings: 3960,
@@ -135,9 +135,9 @@ export const PRACTITIONER_RECORDS = {
     },
     profile: {
       name: 'Sarah Al-Fayed, CNC',
-      idLabel: 'PRAC-77810-SA',
+      uuid: 'p7781000-0000-4000-8000-000000077810',
       joined: 'Jul 19, 2023',
-      status: 'Active',
+      status: 'active',
       bio:
         'Sarah is a certified nutrition coach specializing in metabolic health and sustainable habits. She blends pragmatic nutrition planning with behavioral coaching to support long-term change.',
       specialties: ['Holistic Nutrition', 'Metabolic Health', 'Habit Coaching'],
@@ -150,7 +150,7 @@ export const PRACTITIONER_RECORDS = {
       performance: { earnings: 12640.0, sessions: 312, rating: 4.7 },
       vault: [{ name: 'Certification.pdf', meta: 'Updated Aug 2023', status: 'Verified' }],
       reviews: [
-        { stars: 5, quote: 'Simple plans that actually fit my schedule. Great accountability.', meta: 'Client ID: 2894 • 6 days ago' },
+        { stars: 5, quote: 'Simple plans that actually fit my schedule. Great accountability.', clientName: 'Aisha Khan', clientLink: '/clients/c0983400-0000-4000-8000-000000009834', meta: '6 days ago' },
       ],
       recentSessions: [
         { client: 'Aisha Khan', date: 'Mar 28, 2024', type: 'Nutrition Follow-up', fee: 45, status: 'Completed' },
@@ -184,7 +184,7 @@ export const PRACTITIONER_RECORDS = {
       name: 'Mark Chen',
       email: 'mark.c@flowstate.me',
       modalities: ['Yoga', 'Meditation'],
-      status: 'Suspended',
+      status: 'suspended',
       rating: 3.2,
       sessions: 12,
       earnings: 960,
@@ -192,9 +192,9 @@ export const PRACTITIONER_RECORDS = {
     },
     profile: {
       name: 'Mark Chen, RYT-500',
-      idLabel: 'PRAC-55091-MC',
+      uuid: 'p5509100-0000-4000-8000-000000055091',
       joined: 'Nov 08, 2022',
-      status: 'Suspended',
+      status: 'suspended',
       bio:
         'Mark is a yoga and meditation instructor with a focus on recovery and resilience. This account is currently suspended pending compliance review.',
       specialties: ['Yoga Therapy', 'Meditation', 'Breathwork'],
@@ -207,7 +207,7 @@ export const PRACTITIONER_RECORDS = {
       performance: { earnings: 3960.0, sessions: 72, rating: 3.2 },
       vault: [{ name: 'Insurance.pdf', meta: 'Expired Jan 2025', status: 'Pending' }],
       reviews: [
-        { stars: 3, quote: 'Great sessions, but scheduling has been inconsistent lately.', meta: 'Client ID: 1042 • 1 month ago' },
+        { stars: 3, quote: 'Great sessions, but scheduling has been inconsistent lately.', clientName: 'Priya Nair', clientLink: '/clients/c1010200-0000-4000-8000-000000010102', meta: '1 month ago' },
       ],
       recentSessions: [
         { client: 'Priya Nair', date: 'Feb 15, 2024', type: 'Guided Meditation', fee: 30, status: 'Completed' },
@@ -241,7 +241,7 @@ export const PRACTITIONER_RECORDS = {
       name: 'Emma Thompson',
       email: 'emma@wellbeing.co',
       modalities: ['Massage Therapy'],
-      status: 'Active',
+      status: 'active',
       rating: 4.8,
       sessions: 210,
       earnings: 18900,
@@ -249,9 +249,9 @@ export const PRACTITIONER_RECORDS = {
     },
     profile: {
       name: 'Emma Thompson, LMT',
-      idLabel: 'PRAC-66304-ET',
+      uuid: 'p6630400-0000-4000-8000-000000066304',
       joined: 'May 27, 2023',
-      status: 'Active',
+      status: 'active',
       bio:
         'Emma is a licensed massage therapist specializing in sports recovery and chronic tension. She uses a client-first approach and integrates mobility education into recovery plans.',
       specialties: ['Massage Therapy', 'Sports Recovery', 'Mobility'],
@@ -264,8 +264,8 @@ export const PRACTITIONER_RECORDS = {
         { name: 'Insurance.pdf', meta: 'Exp: Dec 2024', status: 'Verified' },
       ],
       reviews: [
-        { stars: 5, quote: 'Best recovery work I’ve had—felt a difference after the first session.', meta: 'Client ID: 7710 • 4 days ago' },
-        { stars: 5, quote: 'Professional, attentive, and very skilled.', meta: 'Client ID: 1148 • 3 weeks ago' },
+        { stars: 5, quote: 'Best recovery work I’ve had—felt a difference after the first session.', clientName: 'Noah Patel', clientLink: '/clients/c0934400-0000-4000-8000-000000009344', meta: '4 days ago' },
+        { stars: 5, quote: 'Professional, attentive, and very skilled.', clientName: 'Sofia Rossi', clientLink: '/clients/c0950100-0000-4000-8000-000000009501', meta: '3 weeks ago' },
       ],
       recentSessions: [
         { client: 'Noah Patel', date: 'Mar 30, 2024', type: 'Sports Massage', fee: 90, status: 'Completed' },
@@ -300,7 +300,7 @@ export const PRACTITIONER_RECORDS = {
       name: 'Robert Hyland',
       email: 'robert.h@outlook.com',
       modalities: ['Breathwork'],
-      status: 'Inactive',
+      status: 'dormant',
       rating: 4.5,
       sessions: 42,
       earnings: 2100,
@@ -308,9 +308,9 @@ export const PRACTITIONER_RECORDS = {
     },
     profile: {
       name: 'Robert Hyland',
-      idLabel: 'PRAC-29017-RH',
+      uuid: 'p2901700-0000-4000-8000-000000029017',
       joined: 'Jan 14, 2022',
-      status: 'Inactive',
+      status: 'dormant',
       bio:
         'Robert is a breathwork facilitator emphasizing practical tools for emotional regulation. This profile is currently inactive.',
       specialties: ['Breathwork', 'Nervous System Regulation'],
@@ -320,7 +320,7 @@ export const PRACTITIONER_RECORDS = {
       performance: { earnings: 2100.0, sessions: 42, rating: 4.5 },
       vault: [{ name: 'Certification.pdf', meta: 'Updated Jan 2022', status: 'Verified' }],
       reviews: [
-        { stars: 5, quote: 'The breathing techniques were immediately helpful for my anxiety.', meta: 'Client ID: 3009 • 2 months ago' },
+        { stars: 5, quote: 'The breathing techniques were immediately helpful for my anxiety.', clientName: 'Mina Lee', clientLink: '/clients/c0912000-0000-4000-8000-000000009120', meta: '2 months ago' },
       ],
       recentSessions: [{ client: 'Mina Lee', date: 'Dec 12, 2023', type: 'Breathwork', fee: 50, status: 'Completed' }],
     },
@@ -369,7 +369,7 @@ export function getPractitionerProfile(id) {
     : 'Practitioner'
   return {
     name: fallbackName,
-    idLabel: `PRAC-${String(id ?? 'UNKNOWN').toUpperCase()}`,
+    uuid: `p0000000-0000-4000-8000-${String(id ?? 'unknown').padEnd(12, '0').slice(0, 12)}`,
     joined: '—',
     status: 'Active',
     bio: 'This practitioner profile is ready to be connected to real data.',
@@ -378,62 +378,7 @@ export function getPractitionerProfile(id) {
     education: [],
     certifications: [],
     performance: { earnings: 0, sessions: 0, rating: 0 },
-    vault: [],
     reviews: [],
     recentSessions: [],
-  }
-}
-
-export function getPractitionerVerification(id) {
-  const rec = getPractitionerRecord(id)
-  const listName =
-    rec?.row.name ??
-    (id
-      ? String(id)
-          .split('-')
-          .map((p) => p[0]?.toUpperCase() + p.slice(1))
-          .join(' ')
-      : 'Practitioner')
-
-  if (rec?.verification) {
-    return {
-      listName,
-      refId: rec.verification.refId,
-      tier: rec.verification.tier,
-      submittedAt: rec.verification.submittedAt,
-      similarityPct: rec.verification.similarityPct,
-      comparisonRows: rec.verification.comparisonRows,
-      risk: rec.verification.risk,
-      selfieEmoji: rec.verification.selfieEmoji ?? '👤',
-      idImageLabel: 'GOVERNMENT ID',
-      selfieLabel: 'VERIFICATION SELFIE',
-    }
-  }
-
-  const slugRef = String(id ?? 'UNK')
-    .replace(/-/g, '')
-    .slice(0, 6)
-    .toUpperCase()
-  return {
-    listName,
-    refId: `PR-${slugRef}`,
-    tier: 'PRACTITIONER',
-    submittedAt: 'Request submitted —',
-    similarityPct: 85,
-    comparisonRows: [
-      { attribute: 'Full Name', onDocument: listName, inProfile: listName, match: true, profileHighlight: false },
-      { attribute: 'Date of Birth', onDocument: '—', inProfile: '—', match: false, profileHighlight: false },
-      { attribute: 'ID Type', onDocument: '—', inProfile: '—', match: false, profileHighlight: false },
-      { attribute: 'Expiry Date', onDocument: '—', inProfile: '—', match: false, profileHighlight: false },
-    ],
-    risk: {
-      autoStatus: 'Pending manual review',
-      statusTone: 'warning',
-      ip: '—',
-      device: '—',
-    },
-    selfieEmoji: '👤',
-    idImageLabel: 'GOVERNMENT ID',
-    selfieLabel: 'VERIFICATION SELFIE',
   }
 }

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { practitionerListRows } from '../data/practitionerData'
+import { practitionerStatusClass, practitionerStatusLabel } from '../lib/display'
 
 export default function Practitioners() {
   const rows = practitionerListRows
@@ -8,15 +9,15 @@ export default function Practitioners() {
     { label: 'Total active', value: '1,284', delta: '+12%' },
     { label: 'Avg. rating', value: '4.8', delta: '★' },
     { label: 'Total revenue', value: '$128.4K', delta: '' },
-    { label: 'Pending verification', value: '42', delta: 'Urgent' },
+    { label: 'Onboarding incomplete', value: '42', delta: 'Urgent' },
   ]
 
   const tabs = [
     { id: 'all', label: 'All', count: 1402 },
     { id: 'active', label: 'Active', count: 1284 },
-    { id: 'pending', label: 'Pending', count: 42 },
+    { id: 'onboarding_incomplete', label: 'Onboarding Incomplete', count: 42 },
     { id: 'suspended', label: 'Suspended', count: 18 },
-    { id: 'inactive', label: 'Inactive', count: 58 },
+    { id: 'dormant', label: 'Dormant (30d+)', count: 58 },
   ]
 
   return (
@@ -99,7 +100,7 @@ export default function Practitioners() {
 }
 
 function KpiTile({ label, value, delta }) {
-  const isUrgent = label === 'Pending verification'
+  const isUrgent = label === 'Onboarding incomplete'
   const isRating = label === 'Avg. rating'
 
   return (
@@ -155,18 +156,7 @@ function FilterPill({ label, value }) {
 }
 
 function statusPill(status) {
-  switch (status) {
-    case 'Active':
-      return 'bg-emerald-50 text-emerald-700'
-    case 'Pending':
-      return 'bg-amber-50 text-amber-800'
-    case 'Suspended':
-      return 'bg-rose-50 text-rose-700'
-    case 'Inactive':
-      return 'bg-slate-100 text-slate-700'
-    default:
-      return 'bg-slate-100 text-slate-700'
-  }
+  return practitionerStatusClass(status)
 }
 
 function Row({ r }) {
@@ -209,7 +199,7 @@ function Row({ r }) {
 
       <td className="px-4 py-4 sm:px-6">
         <span className={['inline-flex rounded-[10px] px-2.5 py-1 text-[11px] font-semibold', statusPill(r.status)].join(' ')}>
-          {r.status.toUpperCase()}
+          {practitionerStatusLabel(r.status).toUpperCase()}
         </span>
       </td>
 

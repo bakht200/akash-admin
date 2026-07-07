@@ -1,15 +1,12 @@
 import { useMemo, useState } from 'react'
 import {
   AlertTriangle,
-  BadgeCheck,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Eye,
   Filter,
   Flag,
-  MessageSquare,
-  Plus,
   Star,
 } from 'lucide-react'
 
@@ -19,7 +16,7 @@ const PER_PAGE = 10
 const ALL_ROWS = [
   {
     id: '#REV-9821',
-    client: { name: 'Sarah Jenkins', role: 'Verified Client' },
+    client: { name: 'Sarah Jenkins' },
     practitioner: { name: 'Dr. James Chen', role: 'Physiotherapist' },
     rating: 5,
     comment: 'Excellent session — felt heard and the exercises helped within days.',
@@ -31,7 +28,7 @@ const ALL_ROWS = [
   },
   {
     id: '#REV-9820',
-    client: { name: 'Marcus Webb', role: 'Verified Client' },
+    client: { name: 'Marcus Webb' },
     practitioner: { name: 'Priya Nair', role: 'Yoga Instructor' },
     rating: 4,
     comment: 'Great energy, studio was a bit cold.',
@@ -43,7 +40,7 @@ const ALL_ROWS = [
   },
   {
     id: '#REV-9819',
-    client: { name: 'Elena Rossi', role: 'Verified Client' },
+    client: { name: 'Elena Rossi' },
     practitioner: { name: 'Noah Kim', role: 'Meditation Coach' },
     rating: 2,
     comment: 'Not what I expected from the listing. Waste of time.',
@@ -55,7 +52,7 @@ const ALL_ROWS = [
   },
   {
     id: '#REV-9818',
-    client: { name: 'David Okonkwo', role: 'Verified Client' },
+    client: { name: 'David Okonkwo' },
     practitioner: { name: 'Amelia Frost', role: 'Breathwork' },
     rating: 5,
     comment: 'Life-changing breathwork block. Already booked again.',
@@ -67,7 +64,7 @@ const ALL_ROWS = [
   },
   {
     id: '#REV-9817',
-    client: { name: 'Rachel Green', role: 'Verified Client' },
+    client: { name: 'Rachel Green' },
     practitioner: { name: 'Tomás Alvarez', role: 'Reiki' },
     rating: 3,
     comment: 'Okay experience — hard to verify credentials on site.',
@@ -79,7 +76,7 @@ const ALL_ROWS = [
   },
   {
     id: '#REV-9816',
-    client: { name: 'Priya Nair', role: 'Verified Client' },
+    client: { name: 'Priya Nair' },
     practitioner: { name: 'Sarah Miller', role: 'Counselor' },
     rating: 5,
     comment: 'Compassionate and professional. Highly recommend.',
@@ -91,7 +88,7 @@ const ALL_ROWS = [
   },
   {
     id: '#REV-9815',
-    client: { name: 'James Chen', role: 'Verified Client' },
+    client: { name: 'James Chen' },
     practitioner: { name: 'Marcus Webb', role: 'Personal Trainer' },
     rating: 1,
     comment: 'Terrible — this person should be removed.',
@@ -103,7 +100,7 @@ const ALL_ROWS = [
   },
   {
     id: '#REV-9814',
-    client: { name: 'Olivia Park', role: 'Verified Client' },
+    client: { name: 'Olivia Park' },
     practitioner: { name: 'Dr. James Chen', role: 'Physiotherapist' },
     rating: 4,
     comment: 'Solid follow-up plan and clear instructions.',
@@ -115,7 +112,7 @@ const ALL_ROWS = [
   },
   {
     id: '#REV-9813',
-    client: { name: 'Noah Kim', role: 'Verified Client' },
+    client: { name: 'Noah Kim' },
     practitioner: { name: 'Elena Rossi', role: 'Pilates' },
     rating: 5,
     comment: 'Best class I have taken this year.',
@@ -127,7 +124,7 @@ const ALL_ROWS = [
   },
   {
     id: '#REV-9812',
-    client: { name: 'Sofia Martins', role: 'Verified Client' },
+    client: { name: 'Sofia Martins' },
     practitioner: { name: 'Priya Nair', role: 'Yoga Instructor' },
     rating: 4,
     comment: 'Lovely instructor, parking was difficult.',
@@ -206,7 +203,7 @@ export default function Reviews() {
   return (
     <div className="relative space-y-6 pb-20">
       {/* Summary */}
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="figma-card p-6 sm:p-7">
           <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">AVG. RATING</div>
           <div className="mt-2 text-4xl font-semibold tracking-tight text-[var(--figma-text-strong)]">4.8</div>
@@ -230,21 +227,6 @@ export default function Reviews() {
             <span className="mb-1 inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] text-rose-700 ring-1 ring-rose-200/80">
               +3 TODAY
             </span>
-          </div>
-        </div>
-
-        <div className="relative overflow-hidden rounded-[12px] border border-[rgba(27,20,100,0.35)] bg-gradient-to-br from-indigo-950 via-[var(--figma-brand)] to-[#12102e] p-6 text-white shadow-[0_12px_40px_rgba(27,20,100,0.2)] sm:p-7">
-          <BadgeCheck
-            className="pointer-events-none absolute -right-4 bottom-0 h-40 w-40 text-white/10"
-            strokeWidth={1}
-            aria-hidden
-          />
-          <div className="relative">
-            <div className="text-[11px] font-semibold tracking-[0.14em] text-white/75">SYSTEM HEALTH</div>
-            <div className="mt-2 text-3xl font-semibold tracking-tight">94% Positive Sentiment</div>
-            <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/85">
-              Automated NLP scan of recent reviews; excludes hidden and draft entries.
-            </p>
           </div>
         </div>
       </section>
@@ -361,7 +343,6 @@ export default function Reviews() {
                       <Avatar name={r.client.name} />
                       <div className="min-w-0">
                         <div className="truncate font-semibold text-[var(--figma-text-strong)]">{r.client.name}</div>
-                        <div className="truncate text-xs text-[var(--figma-text-muted)]">{r.client.role}</div>
                       </div>
                     </div>
                   </td>
@@ -398,9 +379,9 @@ export default function Reviews() {
                       <button
                         type="button"
                         className="grid h-9 w-9 place-items-center rounded-[10px] border border-[var(--figma-stroke)] bg-[var(--figma-input-bg)] text-[var(--figma-text-muted)] hover:bg-[rgba(244,243,241,0.9)]"
-                        aria-label="Reply"
+                        aria-label="Flag review"
                       >
-                        <MessageSquare className="h-4 w-4" />
+                        <Flag className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
@@ -418,13 +399,6 @@ export default function Reviews() {
         </div>
       </section>
 
-      <button
-        type="button"
-        className="fixed bottom-6 right-6 z-40 grid h-14 w-14 place-items-center rounded-full bg-[var(--figma-brand)] text-white shadow-[0_8px_24px_rgba(27,20,100,0.35)] transition hover:brightness-[1.05] sm:bottom-8 sm:right-8"
-        aria-label="Manual entry"
-      >
-        <Plus className="h-6 w-6" />
-      </button>
     </div>
   )
 }

@@ -1,31 +1,20 @@
-const stats = [
-  { label: 'Total revenue', value: '$12,482', subtitle: 'Last 30 days', delta: '+12.4%', deltaTone: 'pos' },
-  { label: 'Total transactions', value: '6,241', subtitle: 'Compared to last month', delta: '+4.8%', deltaTone: 'pos' },
-  { label: 'Active users', value: '842', subtitle: 'Weekly active users', delta: '+1.2%', deltaTone: 'pos' },
-  { label: 'Refund requests', value: '28', subtitle: 'Last 30 days', delta: '-0.9%', deltaTone: 'neg' },
-]
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import LoadingState from '../components/states/LoadingState'
+import ErrorState from '../components/states/ErrorState'
+import { fetchDashboardKpis, fetchNewJoinings, fetchDashboardRevenueTrend } from '../services/dashboard'
+import { formatMoney } from '../lib/display'
 
-const approvals = [
-  { name: 'Dr. Emma Reed', specialization: 'Trauma-informed Therapy', time: '2h ago' },
-  { name: 'Marcus Sterling', specialization: 'Meditation & Breathwork', time: '5h ago' },
-  { name: 'Sarah Chen', specialization: 'Nutrition & Lifestyle', time: '1d ago' },
-  { name: 'Dr. Emma Reed', specialization: 'Trauma-informed Therapy', time: '2h ago' },
-
-]
-
-const transactions = [
-  { name: 'James Dunn', type: 'Therapy intake', amount: '$120.00', status: 'Completed' },
-  { name: 'Maya R. Patel', type: 'Nutrition consult', amount: '$85.00', status: 'Completed' },
-  { name: 'Alicia Lee', type: 'Meditation session', amount: '$45.00', status: 'Completed' },
-  { name: 'Tom Harris', type: 'Performance coaching', amount: '$200.00', status: 'Pending' },
-]
-
-function KpiCard({ label, value, subtitle, delta, deltaTone }) {
+function KpiCard({ label, value, subtitle, delta, deltaTone, onClick }) {
   const deltaClasses =
     deltaTone === 'neg' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'
 
   return (
-    <div className="figma-card p-5 sm:p-6">
+    <button
+      type="button"
+      onClick={onClick}
+      className="figma-card w-full p-5 text-left transition hover:brightness-[0.99] sm:p-6"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs font-semibold tracking-wide text-[var(--figma-text-muted)]">{label}</div>
@@ -36,48 +25,112 @@ function KpiCard({ label, value, subtitle, delta, deltaTone }) {
           {delta}
         </span>
       </div>
-    </div>
+    </button>
   )
 }
 
 function Dashboard() {
+  const navigate = useNavigate()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [kpis, setKpis] = useState(null)
+  const [joinings, setJoinings] = useState([])
+  const [trend, setTrend] = useState({ points: [], labels: [] })
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const [kpiData, joiningData, trendData] = await Promise.all([
+          fetchDashboardKpis(),
+          fetchNewJoinings(),
+          fetchDashboardRevenueTrend(6),
+        ])
+        if (!cancelled) {
+          setKpis(kpiData)
+          setJoinings(joiningData)
+          setTrend(trendData)
+        }
+      } catch (err) {
+        if (!cancelled) setError(err)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (loading) return <LoadingState label="Loading dashboard…" />
+  if (error) return <ErrorState message="Could not load dashboard." onRetry={() => window.location.reload()} />
+
+  const stats = [
+    {
+      label: 'Platform Revenue',
+      value: formatMoney(kpis.platformRevenue.value),
+      subtitle: 'Last 30 days',
+      delta: `${kpis.platformRevenue.deltaPct > 0 ? '+' : ''}${kpis.platformRevenue.deltaPct}%`,
+      deltaTone: kpis.platformRevenue.deltaPct >= 0 ? 'pos' : 'neg',
+      href: '/revenue',
+    },
+    {
+      label: 'Transactions',
+      value: kpis.transactions.value.toLocaleString(),
+      subtitle: 'Last 30 days',
+      delta: `+${kpis.transactions.deltaPct}%`,
+      deltaTone: 'pos',
+      href: '/transactions',
+    },
+    {
+      label: 'Active Users',
+      value: kpis.activeUsers.value.toLocaleString(),
+      subtitle: kpis.activeUsers.accumulating ? 'Data accumulating' : 'Last 30 days',
+      delta: `+${kpis.activeUsers.deltaPct}%`,
+      deltaTone: 'pos',
+      href: '/clients?status=active',
+    },
+    {
+      label: 'Refunds (30d)',
+      value: String(kpis.refunds30d.value),
+      subtitle: 'Last 30 days',
+      delta: `${kpis.refunds30d.deltaPct}%`,
+      deltaTone: 'neg',
+      href: '/transactions?type=refunds',
+    },
+  ]
+
   return (
     <div className="space-y-4">
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 [&>*]:min-w-0">
         {stats.map((s) => (
-          <KpiCard key={s.label} {...s} />
+          <KpiCard key={s.label} {...s} onClick={() => navigate(s.href)} />
         ))}
       </section>
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-stretch">
-        {/* Revenue flow */}
         <div className="lg:col-span-8 h-full">
           <div className="figma-card h-full rounded-[12px] p-5 sm:p-6">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold text-[var(--figma-text-strong)]">Monthly Revenue Flow</div>
-                <div className="mt-1 text-xs text-[var(--figma-text-muted)]">
-                  Calculated from practitioner earnings and payouts
-                </div>
+                <div className="text-sm font-semibold text-[var(--figma-text-strong)]">Platform Revenue Flow</div>
+                <div className="mt-1 text-xs text-[var(--figma-text-muted)]">Commission + platform fee + client service fee</div>
               </div>
               <div className="rounded-[10px] border border-[var(--figma-stroke)] bg-white px-3 py-2 text-xs font-semibold text-[var(--figma-text)]">
-                Last 6 months
+                Last 6m
               </div>
             </div>
 
             <div className="mt-5">
               <div className="grid h-[220px] grid-cols-6 items-end gap-3 rounded-[12px] bg-[var(--figma-input-bg)] p-4 sm:h-[260px]">
-                {[28, 34, 46, 40, 58, 78].map((h, idx) => (
+                {trend.points.map((h, idx) => (
                   <div key={idx} className="flex flex-col items-center gap-3">
                     <div className="w-full rounded-[10px] bg-[rgba(27,20,100,0.10)]">
-                      <div
-                        className="w-full rounded-[10px] bg-[var(--figma-brand)]"
-                        style={{ height: `${h * 2}px` }}
-                      />
+                      <div className="w-full rounded-[10px] bg-[var(--figma-brand)]" style={{ height: `${h * 2}px` }} />
                     </div>
-                    <div className="text-[11px] font-semibold text-[var(--figma-text-muted)]">
-                      {['APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP'][idx]}
-                    </div>
+                    <div className="text-[11px] font-semibold text-[var(--figma-text-muted)]">{trend.labels[idx]}</div>
                   </div>
                 ))}
               </div>
@@ -85,17 +138,22 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Approvals */}
         <div className="lg:col-span-4">
           <div className="figma-card rounded-[12px] p-5 sm:p-6 lg:min-h-[360px]">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <div className="text-sm font-semibold text-[var(--figma-text-strong)]">New Joinings</div>
+              <span className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-rose-600 px-2 text-[11px] font-semibold text-white">
+                {kpis.newJoiningsThisWeek}
+              </span>
             </div>
+            <div className="mt-1 text-xs text-[var(--figma-text-muted)]">Newly joined this week</div>
             <div className="mt-4 space-y-3">
-              {approvals.map((a) => (
-                <div
-                  key={a.name}
-                  className="flex items-center gap-3 rounded-[12px] border border-[var(--figma-stroke)] bg-white p-3"
+              {joinings.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => navigate(`/practitioners/${a.id}`)}
+                  className="flex w-full items-center gap-3 rounded-[12px] border border-[var(--figma-stroke)] bg-white p-3 text-left hover:bg-[rgba(244,243,241,0.55)]"
                 >
                   <div className="h-9 w-9 rounded-full bg-[var(--figma-input-bg)]" />
                   <div className="min-w-0 flex-1">
@@ -103,60 +161,11 @@ function Dashboard() {
                     <div className="mt-0.5 truncate text-xs text-[var(--figma-text-muted)]">{a.specialization}</div>
                   </div>
                   <div className="text-[11px] font-semibold text-[var(--figma-text-muted)]/70">{a.time}</div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
         </div>
-      </section>
-
-      <section className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* Transactions */}
-        <div className="lg:col-span-8">
-          <div className="figma-card rounded-[12px] p-5 sm:p-6">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-sm font-semibold text-[var(--figma-text-strong)]">Recent Transactions</div>
-              <button type="button" className="text-xs font-semibold text-[var(--figma-brand)] hover:underline">
-                View all
-              </button>
-            </div>
-
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[620px] text-left text-sm">
-                <thead className="text-xs text-[var(--figma-text-muted)]">
-                  <tr className="border-b border-[var(--figma-stroke)]">
-                    <th className="pb-3 font-semibold">Name</th>
-                    <th className="pb-3 font-semibold">Session type</th>
-                    <th className="pb-3 text-right font-semibold">Amount</th>
-                    <th className="pb-3 text-right font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map((t) => (
-                    <tr key={t.name} className="border-b border-[rgba(200,197,210,0.15)] last:border-b-0">
-                      <td className="py-3 font-semibold text-[var(--figma-text-strong)]">{t.name}</td>
-                      <td className="py-3 text-[var(--figma-text)]">{t.type}</td>
-                      <td className="py-3 text-right font-semibold text-[var(--figma-text-strong)]">{t.amount}</td>
-                      <td className="py-3 text-right">
-                        <span
-                          className={[
-                            'inline-flex rounded-full px-3 py-1 text-xs font-semibold',
-                            t.status === 'Completed'
-                              ? 'bg-emerald-50 text-emerald-700'
-                              : 'bg-amber-50 text-amber-700',
-                          ].join(' ')}
-                        >
-                          {t.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
       </section>
     </div>
   )

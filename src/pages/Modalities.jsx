@@ -157,9 +157,9 @@ export default function Modalities() {
           <div className="relative overflow-hidden rounded-[12px] border border-[rgba(27,20,100,0.35)] bg-[var(--figma-brand)] p-6 text-white shadow-md sm:p-7">
             <BarChart3 className="pointer-events-none absolute -right-2 bottom-0 h-28 w-28 text-white/10" strokeWidth={1} aria-hidden />
             <div className="relative">
-              <div className="text-[11px] font-semibold tracking-[0.14em] text-white/75">GLOBAL DEMAND FORECAST</div>
+              <div className="text-[11px] font-semibold tracking-[0.14em] text-white/75">30-DAY TREND</div>
               <p className="mt-3 text-sm leading-relaxed text-white/90">
-                Predictive analysis suggests a 14% increase in energy-based modalities for Q3.
+                Energy-based modalities show a 14% upward trend over the last 30 days.
               </p>
               <button
                 type="button"

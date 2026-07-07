@@ -1,7 +1,7 @@
 import { Lock, Mail } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { isAuthed, setAuthed } from '../auth/auth'
+import { isAuthed, mockLogin } from '../auth/auth'
 import AppLogo from '../components/AppLogo'
 
 export default function Login() {
@@ -18,16 +18,17 @@ export default function Login() {
     e.preventDefault()
     setError('')
 
+    const emailNorm = email.trim().toLowerCase()
     const ok =
-      email.trim().toLowerCase() === 'akash@gmail.com' && password === '123456'
+      (emailNorm === 'akash@gmail.com' && password === '123456') ||
+      (emailNorm.endsWith('@akash.life') && password.length >= 6)
 
     if (!ok) {
-      setAuthed(false)
       setError('Invalid email or password.')
       return
     }
 
-    setAuthed(true)
+    mockLogin(emailNorm, password)
     navigate('/dashboard', { replace: true })
   }
 

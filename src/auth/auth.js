@@ -1,10 +1,14 @@
-const STORAGE_KEY = 'my-portal:isAuthed'
+import {
+  isAuthed,
+  clearSession,
+  mockLogin,
+  getCurrentUser,
+  getPermissions,
+  getAccessToken,
+} from './session'
 
-export function isAuthed() {
-  return window.localStorage.getItem(STORAGE_KEY) === 'true'
-}
+export { isAuthed, mockLogin, getCurrentUser, getPermissions, getAccessToken }
 
 export function setAuthed(value) {
-  window.localStorage.setItem(STORAGE_KEY, value ? 'true' : 'false')
+  if (!value) clearSession()
 }
-
