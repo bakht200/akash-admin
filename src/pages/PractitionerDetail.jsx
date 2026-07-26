@@ -1,135 +1,280 @@
-import { useMemo } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { BadgeCheck, GraduationCap, CheckCircle2 } from 'lucide-react'
-import { getPractitionerListName, getPractitionerProfile } from '../data/practitionerData'
-import { formatShortUuid, normalizePractitionerStatus, practitionerStatusLabel } from '../lib/display'
-
-function pillClass(status) {
-  const normalized = normalizePractitionerStatus(status)
-  switch (normalized) {
-    case 'active':
-      return 'bg-emerald-50 text-emerald-700'
-    case 'onboarding_incomplete':
-      return 'bg-amber-50 text-amber-800'
-    case 'suspended':
-      return 'bg-rose-50 text-rose-700'
-    case 'dormant':
-      return 'bg-slate-100 text-slate-700'
-    default:
-      return 'bg-slate-100 text-slate-700'
-  }
-}
-
-function AvatarCard({ name }) {
-  const initials = name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join('')
-
-  return (
-    <div className="relative overflow-hidden rounded-[14px] bg-[rgba(27,20,100,0.10)]">
-      <div className="aspect-[4/3] w-full">
-        <div className="grid h-full w-full place-items-center bg-[rgba(27,20,100,0.12)]">
-          <div className="grid h-20 w-20 place-items-center rounded-full bg-white/70 text-lg font-semibold text-[var(--figma-text-strong)]">
-            {initials || '—'}
-          </div>
-        </div>
-      </div>
-      <div className="absolute bottom-0 left-0 right-0 bg-black/35 px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-white">
-        Practitioner Profile
-      </div>
-    </div>
-  )
-}
-
-function KeyPill({ children, status }) {
-  return (
-    <span className={['inline-flex items-center rounded-[10px] px-2.5 py-1 text-[11px] font-semibold', pillClass(status)].join(' ')}>
-      {children}
-    </span>
-  )
-}
+import { BadgeCheck, CircleSlash, GraduationCap, Power } from 'lucide-react'
+import ReasonModal from '../components/modals/ReasonModal'
+import LoadingState from '../components/states/LoadingState'
+import ErrorState from '../components/states/ErrorState'
+import {
+  formatAdminDateTime,
+  formatCents,
+  formatShortUuid,
+  personName,
+  practitionerStatusClass,
+  practitionerStatusLabel,
+  sessionStatusClass,
+  sessionStatusLabel,
+} from '../lib/display'
+import { getErrorMessage } from '../lib/errors'
+import { usePermissions } from '../hooks/usePermissions'
+import {
+  clearCommissionOverride,
+  fetchCommissionOverride,
+  fetchPractitioner,
+  moderatePractitioner,
+  reactivatePractitioner,
+  setCommissionOverride,
+  suspendPractitioner,
+} from '../services/practitioners'
 
 export default function PractitionerDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { canWritePractitioners, canSuspendUsers, canOverrideCommission } = usePermissions()
 
-  const data = useMemo(() => getPractitionerProfile(id), [id])
-  const displayName = getPractitionerListName(id) ?? data.name
-  const training = data.training ?? data.education ?? []
+  const [data, setData] = useState(null)
+  const [override, setOverride] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [suspendOpen, setSuspendOpen] = useState(false)
+  const [reactivateOpen, setReactivateOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [commissionOpen, setCommissionOpen] = useState(false)
+  const [actionError, setActionError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [detail, commission] = await Promise.all([
+        fetchPractitioner(id),
+        fetchCommissionOverride(id).catch(() => null),
+      ])
+      setData(detail)
+      setOverride(commission)
+    } catch (err) {
+      setError(err)
+      setData(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [id])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  if (loading) return <LoadingState label="Loading practitioner…" />
+  if (error) return <ErrorState message={getErrorMessage(error, 'Could not load practitioner.')} onRetry={load} />
+  if (!data) return <ErrorState message="Practitioner not found." />
+
+  const profile = data.profile ?? data
+  const name = personName(profile)
+  const status = profile.status ?? data.status
+  const training = data.trainingAndCertifications ?? {}
+  const trainingItems = training.training ?? training.items ?? (Array.isArray(training) ? training : [])
+  const certifications = training.certifications ?? []
+  const ledger = data.performanceLedger ?? {}
+  const recentSessions = data.recentSessions ?? []
+  const reviews = data.reviews ?? []
+  const specialties = profile.specializations ?? profile.specialties ?? []
+  const isSuspended = status === 'suspended'
+
+  async function onSuspend(reason) {
+    setBusy(true)
+    setActionError('')
+    try {
+      await suspendPractitioner(id, reason)
+      setSuspendOpen(false)
+      await load()
+    } catch (err) {
+      setActionError(getErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onReactivate(reason) {
+    setBusy(true)
+    setActionError('')
+    try {
+      await reactivatePractitioner(id, reason)
+      setReactivateOpen(false)
+      await load()
+    } catch (err) {
+      setActionError(getErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onModerate(payload) {
+    setBusy(true)
+    setActionError('')
+    try {
+      await moderatePractitioner(id, payload)
+      setEditOpen(false)
+      await load()
+    } catch (err) {
+      setActionError(getErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onSaveCommission({ overrideRate, overrideExpiresAt }) {
+    setBusy(true)
+    setActionError('')
+    try {
+      await setCommissionOverride(id, { overrideRate, overrideExpiresAt })
+      setCommissionOpen(false)
+      await load()
+    } catch (err) {
+      setActionError(getErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onClearCommission() {
+    if (!window.confirm('Clear commission override?')) return
+    setBusy(true)
+    try {
+      await clearCommissionOverride(id)
+      await load()
+    } catch (err) {
+      setActionError(getErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-start">
         <div className="min-w-0">
           <div className="text-xs font-semibold text-[var(--figma-text-muted)]">
-            <button
-              type="button"
-              onClick={() => navigate('/practitioners')}
-              className="hover:text-[var(--figma-text)]"
-            >
+            <button type="button" onClick={() => navigate('/practitioners')} className="hover:text-[var(--figma-text)]">
               Practitioners
             </button>{' '}
-            <span className="text-[var(--figma-text-muted)]">›</span>{' '}
-            <span className="text-[var(--figma-text-strong)]">{displayName}</span>
+            <span>›</span> <span className="text-[var(--figma-text-strong)]">{name}</span>
           </div>
-
-          <div className="mt-2 truncate text-2xl font-semibold tracking-tight text-[var(--figma-text-strong)]">{displayName}</div>
+          <div className="mt-2 truncate text-2xl font-semibold tracking-tight text-[var(--figma-text-strong)]">{name}</div>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-[var(--figma-text-muted)]">
             <span>
-              <span className="font-semibold text-[var(--figma-text-muted)]">ID:</span> {formatShortUuid(data.uuid)}
+              <span className="font-semibold">ID:</span> {formatShortUuid(profile.id ?? id)}
             </span>
             <span className="h-1 w-1 rounded-full bg-[var(--figma-stroke)]" />
             <span>
-              <span className="font-semibold text-[var(--figma-text-muted)]">Joined:</span> {data.joined}
+              <span className="font-semibold">Joined:</span>{' '}
+              {profile.createdAt ? formatAdminDateTime(profile.createdAt) : '—'}
             </span>
-            <KeyPill status={data.status}>{practitionerStatusLabel(data.status).toUpperCase()}</KeyPill>
+            <span
+              className={[
+                'inline-flex items-center rounded-[10px] px-2.5 py-1 text-[11px] font-semibold',
+                practitionerStatusClass(status),
+              ].join(' ')}
+            >
+              {practitionerStatusLabel(status).toUpperCase()}
+            </span>
           </div>
         </div>
 
-        <div className="flex w-full items-center gap-2 sm:w-auto sm:justify-end">
-          <button
-            type="button"
-            className="flex-1 sm:flex-none inline-flex h-10 items-center justify-center rounded-[10px] border border-[var(--figma-stroke)] bg-white px-4 text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-strong)] hover:bg-[rgba(244,243,241,0.7)]"
-          >
-            EDIT PROFILE
-          </button>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+          {canWritePractitioners() ? (
+            <button
+              type="button"
+              onClick={() => setEditOpen(true)}
+              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[var(--figma-stroke)] bg-white px-4 text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-strong)] hover:bg-[rgba(244,243,241,0.7)]"
+            >
+              MODERATE
+            </button>
+          ) : null}
+          {canOverrideCommission() ? (
+            <button
+              type="button"
+              onClick={() => setCommissionOpen(true)}
+              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[var(--figma-stroke)] bg-white px-4 text-[11px] font-semibold tracking-[0.14em]"
+            >
+              COMMISSION
+            </button>
+          ) : null}
         </div>
       </div>
 
-      <section className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-8">
-          <div className="figma-card p-5 sm:p-6">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-12">
-              <div className="md:col-span-5">
-                <AvatarCard name={displayName} />
-              </div>
-              <div className="md:col-span-7">
-                <div className="text-sm font-semibold text-[var(--figma-text-strong)]">Professional Biography</div>
-                <div className="mt-2 text-sm leading-relaxed text-[var(--figma-text)]">{data.bio}</div>
+      {actionError ? (
+        <div className="rounded-[10px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+          {actionError}
+        </div>
+      ) : null}
 
-                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">SPECIALTIES</div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {data.specialties.map((s) => (
-                        <span
-                          key={s}
-                          className="inline-flex items-center rounded-[10px] bg-[var(--figma-input-bg)] px-2.5 py-1 text-[11px] font-semibold text-[var(--figma-text)]"
-                        >
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">PRICING</div>
-                    <div className="mt-2 text-lg font-semibold text-[var(--figma-text-strong)]">
-                      ${data.price.toFixed(2)} <span className="text-xs font-semibold text-[var(--figma-text-muted)]">/ session</span>
-                    </div>
-                  </div>
+      <ReasonModal
+        open={suspendOpen}
+        title="Suspend practitioner"
+        message="Locks the account, refunds future confirmed sessions, and freezes payouts."
+        confirmLabel={busy ? 'Suspending…' : 'Suspend'}
+        onCancel={() => setSuspendOpen(false)}
+        onConfirm={onSuspend}
+      />
+      <ReasonModal
+        open={reactivateOpen}
+        title="Reactivate practitioner"
+        message="Restores access and unfreezes payouts. Reason is optional."
+        reasonLabel="Reason (optional)"
+        reasonRequired={false}
+        confirmLabel={busy ? 'Reactivating…' : 'Reactivate'}
+        onCancel={() => setReactivateOpen(false)}
+        onConfirm={onReactivate}
+      />
+      <ModerateModal
+        key={editOpen ? `mod-${id}` : 'mod-closed'}
+        open={editOpen}
+        profile={profile}
+        specialties={specialties}
+        busy={busy}
+        onCancel={() => setEditOpen(false)}
+        onSave={onModerate}
+      />
+      <CommissionModal
+        key={commissionOpen ? `com-${id}` : 'com-closed'}
+        open={commissionOpen}
+        current={override}
+        busy={busy}
+        onCancel={() => setCommissionOpen(false)}
+        onSave={onSaveCommission}
+        onClear={onClearCommission}
+      />
+
+      <section className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="lg:col-span-8 space-y-6">
+          <div className="figma-card p-5 sm:p-6">
+            <div className="text-sm font-semibold text-[var(--figma-text-strong)]">Professional Biography</div>
+            <div className="mt-2 text-sm leading-relaxed text-[var(--figma-text)]">{profile.bio || '—'}</div>
+
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">SPECIALTIES</div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(Array.isArray(specialties) ? specialties : []).map((s) => {
+                    const label = typeof s === 'string' ? s : s.name || s.title
+                    const key = typeof s === 'string' ? s : s.id || label
+                    return (
+                      <span
+                        key={key}
+                        className="inline-flex items-center rounded-[10px] bg-[var(--figma-input-bg)] px-2.5 py-1 text-[11px] font-semibold text-[var(--figma-text)]"
+                      >
+                        {label}
+                      </span>
+                    )
+                  })}
+                  {!specialties?.length ? <span className="text-sm text-[var(--figma-text-muted)]">—</span> : null}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">PRICING</div>
+                <div className="mt-2 text-lg font-semibold text-[var(--figma-text-strong)]">
+                  {formatCents(profile.sessionPriceCents)}{' '}
+                  <span className="text-xs font-semibold text-[var(--figma-text-muted)]">/ session</span>
                 </div>
               </div>
             </div>
@@ -139,14 +284,18 @@ export default function PractitionerDetail() {
                 <div>
                   <div className="flex items-center gap-2 text-base font-semibold text-[var(--figma-brand)]">
                     <GraduationCap className="h-5 w-5" />
-                    <span>Training & Certifications</span>
+                    <span>Training</span>
                   </div>
                   <div className="mt-4 space-y-4">
-                    {training.length ? (
-                      training.map((e) => (
-                        <div key={e.title}>
-                          <div className="text-sm font-semibold text-[var(--figma-text-strong)]">{e.title}</div>
-                          <div className="mt-0.5 text-xs text-[var(--figma-text-muted)]">{e.meta}</div>
+                    {trainingItems.length ? (
+                      trainingItems.map((e, idx) => (
+                        <div key={e.id || e.title || idx}>
+                          <div className="text-sm font-semibold text-[var(--figma-text-strong)]">
+                            {e.title || e.name || e.program || 'Training'}
+                          </div>
+                          <div className="mt-0.5 text-xs text-[var(--figma-text-muted)]">
+                            {e.meta || e.institution || e.details || ''}
+                          </div>
                         </div>
                       ))
                     ) : (
@@ -154,18 +303,16 @@ export default function PractitionerDetail() {
                     )}
                   </div>
                 </div>
-
                 <div>
                   <div className="flex items-center gap-2 text-base font-semibold text-[var(--figma-brand)]">
                     <BadgeCheck className="h-5 w-5" />
                     <span>Certifications</span>
                   </div>
                   <div className="mt-4 space-y-4">
-                    {data.certifications.length ? (
-                      data.certifications.map((c) => (
-                        <div key={c} className="flex items-start gap-3">
-                          <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" />
-                          <div className="text-sm text-[var(--figma-text-strong)]">{c}</div>
+                    {certifications.length ? (
+                      certifications.map((c, idx) => (
+                        <div key={c.id || c.name || idx} className="text-sm text-[var(--figma-text-strong)]">
+                          {typeof c === 'string' ? c : c.name || c.title}
                         </div>
                       ))
                     ) : (
@@ -177,12 +324,12 @@ export default function PractitionerDetail() {
             </div>
           </div>
 
-          <div className="mt-6 figma-card overflow-hidden">
+          <div className="figma-card overflow-hidden">
             <div className="flex items-center justify-between gap-3 bg-white px-5 py-4 sm:px-6">
               <div className="text-sm font-semibold text-[var(--figma-text-strong)]">Recent Sessions</div>
-              <button type="button" className="text-xs font-semibold text-[var(--figma-brand)] hover:brightness-95">
+              <Link to="/sessions" className="text-xs font-semibold text-[var(--figma-brand)] hover:brightness-95">
                 View All
-              </button>
+              </Link>
             </div>
             <div className="overflow-x-auto bg-white">
               <table className="min-w-[720px] w-full border-collapse">
@@ -199,33 +346,39 @@ export default function PractitionerDetail() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.recentSessions.map((s) => (
-                    <tr key={`${s.client}-${s.date}`} className="border-b border-[var(--figma-stroke)] last:border-b-0">
+                  {recentSessions.map((s) => (
+                    <tr key={s.id || `${s.client}-${s.scheduledStartUtc}`} className="border-b border-[var(--figma-stroke)] last:border-b-0">
                       <td className="px-5 py-4 text-sm font-semibold text-[var(--figma-text-strong)] sm:px-6">
-                        {s.clientLink ? (
-                          <Link to={s.clientLink} className="text-[var(--figma-brand)] hover:underline">
-                            {s.client}
+                        {s.client?.id ? (
+                          <Link to={`/clients/${s.client.id}`} className="text-[var(--figma-brand)] hover:underline">
+                            {personName(s.client)}
                           </Link>
                         ) : (
-                          s.client
+                          personName(s.client) || s.clientName || '—'
                         )}
                       </td>
-                      <td className="px-5 py-4 text-sm text-[var(--figma-text)] sm:px-6">{s.date}</td>
-                      <td className="px-5 py-4 text-sm text-[var(--figma-text)] sm:px-6">{s.type}</td>
-                      <td className="px-5 py-4 text-sm font-semibold text-[var(--figma-text-strong)] sm:px-6">${s.fee.toFixed(2)}</td>
+                      <td className="px-5 py-4 text-sm text-[var(--figma-text)] sm:px-6">
+                        {s.scheduledStartUtc ? formatAdminDateTime(s.scheduledStartUtc) : s.date || '—'}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-[var(--figma-text)] sm:px-6">
+                        {s.modality?.name || s.modality || s.type || '—'}
+                      </td>
+                      <td className="px-5 py-4 text-sm font-semibold sm:px-6">
+                        {formatCents(s.feeCents ?? s.totalChargedCents)}
+                      </td>
                       <td className="px-5 py-4 sm:px-6">
                         <span
                           className={[
                             'inline-flex rounded-[10px] px-2.5 py-1 text-[11px] font-semibold',
-                            pillClass(s.status.toLowerCase() === 'completed' ? 'active' : 'cancelled'),
+                            sessionStatusClass(s.status),
                           ].join(' ')}
                         >
-                          {s.status.toUpperCase()}
+                          {sessionStatusLabel(s.status).toUpperCase()}
                         </span>
                       </td>
                     </tr>
                   ))}
-                  {data.recentSessions.length === 0 ? (
+                  {recentSessions.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-5 py-8 text-sm text-[var(--figma-text-muted)] sm:px-6">
                         No recent sessions.
@@ -243,71 +396,200 @@ export default function PractitionerDetail() {
             <div className="text-[11px] font-semibold tracking-[0.16em] text-white/75">PERFORMANCE LEDGER</div>
             <div className="mt-5 rounded-[12px] bg-white/10 p-4">
               <div className="text-xs text-white/70">Practitioner Earnings</div>
-              <div className="mt-1 flex items-center justify-between gap-3">
-                <div className="text-2xl font-semibold tracking-tight">
-                  ${data.performance.earnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-                <div className="grid h-9 w-9 place-items-center rounded-[10px] bg-white/15">💳</div>
+              <div className="mt-1 text-2xl font-semibold tracking-tight">
+                {formatCents(ledger.earningsCents ?? ledger.totalEarningsCents ?? ledger.earnings)}
               </div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-4">
               <div className="rounded-[12px] bg-white/10 p-4">
                 <div className="text-xs text-white/70">Total Sessions</div>
-                <div className="mt-1 text-lg font-semibold">{data.performance.sessions}</div>
+                <div className="mt-1 text-lg font-semibold">{ledger.totalSessions ?? ledger.sessions ?? profile.totalSessions ?? 0}</div>
               </div>
               <div className="rounded-[12px] bg-white/10 p-4">
                 <div className="text-xs text-white/70">Avg Rating</div>
                 <div className="mt-1 text-lg font-semibold">
-                  {data.performance.rating.toFixed(1)} <span className="text-[#F3E7C4]">★</span>
+                  {typeof (ledger.averageRating ?? profile.averageRating) === 'number'
+                    ? (ledger.averageRating ?? profile.averageRating).toFixed(1)
+                    : '—'}{' '}
+                  <span className="text-[#F3E7C4]">★</span>
                 </div>
               </div>
             </div>
+            {override?.overrideRate != null ? (
+              <div className="mt-4 rounded-[12px] bg-white/10 p-4 text-xs">
+                Commission override: {(override.overrideRate * 100).toFixed(0)}% until{' '}
+                {override.overrideExpiresAt ? formatAdminDateTime(override.overrideExpiresAt) : '—'}
+              </div>
+            ) : null}
           </div>
 
           <div className="figma-card p-5 sm:p-6">
             <div className="text-[11px] font-semibold tracking-[0.16em] text-[var(--figma-text-muted)]">RECENT REVIEWS</div>
             <div className="mt-4 space-y-3">
-              {data.reviews.map((rv, idx) => (
-                <div key={idx} className="rounded-[12px] border border-[var(--figma-stroke)] bg-white px-4 py-3">
-                  <div className="text-sm text-[#C79A2B]">{'★'.repeat(rv.stars)}</div>
-                  <div className="mt-2 text-sm text-[var(--figma-text)]">"{rv.quote}"</div>
-                  <div className="mt-2 text-xs font-semibold text-[var(--figma-text-muted)]">
-                    {rv.clientLink ? (
-                      <Link to={rv.clientLink} className="text-[var(--figma-brand)] hover:underline">
-                        {rv.clientName}
-                      </Link>
-                    ) : (
-                      rv.meta
-                    )}
-                    {rv.clientLink && rv.meta ? ` · ${rv.meta.replace(/^Client ID: \d+ · /, '')}` : null}
+              {reviews.length === 0 ? (
+                <p className="text-sm text-[var(--figma-text-muted)]">No reviews.</p>
+              ) : (
+                reviews.map((rv, idx) => (
+                  <div key={rv.id || idx} className="rounded-[12px] border border-[var(--figma-stroke)] bg-white px-4 py-3">
+                    <div className="text-sm text-[#C79A2B]">{'★'.repeat(rv.rating ?? rv.stars ?? 0)}</div>
+                    <div className="mt-2 text-sm text-[var(--figma-text)]">"{rv.body || rv.quote || rv.comment}"</div>
+                    <div className="mt-2 text-xs font-semibold text-[var(--figma-text-muted)]">
+                      {rv.client?.id ? (
+                        <Link to={`/clients/${rv.client.id}`} className="text-[var(--figma-brand)] hover:underline">
+                          {personName(rv.client)}
+                        </Link>
+                      ) : (
+                        personName(rv.client) || rv.clientName || 'Client'
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-              <button type="button" className="w-full rounded-[12px] bg-[var(--figma-input-bg)] px-4 py-3 text-sm font-semibold text-[var(--figma-text-strong)] hover:brightness-[0.98]">
-                See All Reviews
-              </button>
+                ))
+              )}
             </div>
           </div>
 
-          <div className="figma-card p-5 sm:p-6">
-            <div className="text-[11px] font-semibold tracking-[0.16em] text-[var(--figma-text-muted)]">ADMINISTRATIVE CONTROL</div>
-            <div className="mt-4 space-y-3">
-              <button
-                type="button"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-[12px] border border-[var(--figma-stroke)] bg-white px-4 py-3 text-sm font-semibold text-[var(--figma-text-strong)] hover:bg-[rgba(244,243,241,0.7)]"
-              >
-                Suspend Account
-              </button>
-              <button
-                type="button"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-[12px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 hover:brightness-[0.98]"
-              >
-                Reactivate
-              </button>
+          {canSuspendUsers() ? (
+            <div className="figma-card p-5 sm:p-6">
+              <div className="text-[11px] font-semibold tracking-[0.16em] text-[var(--figma-text-muted)]">ADMINISTRATIVE CONTROL</div>
+              <div className="mt-4 space-y-3">
+                {!isSuspended ? (
+                  <button
+                    type="button"
+                    onClick={() => setSuspendOpen(true)}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[12px] border border-rose-200 bg-white px-4 py-3 text-sm font-semibold text-rose-700 hover:bg-rose-50"
+                  >
+                    <CircleSlash className="h-4 w-4" />
+                    Suspend Account
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setReactivateOpen(true)}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[12px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800"
+                  >
+                    <Power className="h-4 w-4" />
+                    Reactivate
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
       </section>
+    </div>
+  )
+}
+
+function ModerateModal({ open, profile, specialties, busy, onCancel, onSave }) {
+  const [bio, setBio] = useState(profile?.bio ?? '')
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatarUrl ?? '')
+  const [unassignSpecializationId, setUnassignSpecializationId] = useState('')
+
+  if (!open) return null
+
+  const specs = (Array.isArray(specialties) ? specialties : []).filter((s) => typeof s === 'object' && s.id)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-[12px] bg-white p-6 shadow-xl">
+        <h2 className="text-lg font-semibold">Moderate profile</h2>
+        <p className="mt-1 text-sm text-[var(--figma-text-muted)]">Bio, avatar, or unassign a specialization. Never price.</p>
+        <div className="mt-4 space-y-3">
+          <label className="block text-sm font-semibold">
+            Bio
+            <textarea value={bio} onChange={(e) => setBio(e.target.value)} className="mt-1 h-24 w-full rounded-[10px] border px-3 py-2 text-sm font-normal" />
+          </label>
+          <label className="block text-sm font-semibold">
+            Avatar URL
+            <input value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} className="mt-1 h-10 w-full rounded-[10px] border px-3 text-sm font-normal" placeholder="Leave blank to keep; type clear to remove" />
+          </label>
+          {specs.length ? (
+            <label className="block text-sm font-semibold">
+              Unassign specialization
+              <select value={unassignSpecializationId} onChange={(e) => setUnassignSpecializationId(e.target.value)} className="mt-1 h-10 w-full rounded-[10px] border px-3 text-sm font-normal">
+                <option value="">—</option>
+                {specs.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name || s.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+        </div>
+        <div className="mt-6 flex justify-end gap-2">
+          <button type="button" onClick={onCancel} className="rounded-[8px] px-4 py-2 text-sm font-semibold">
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              const payload = { bio }
+              if (avatarUrl === 'clear') payload.avatarUrl = null
+              else if (avatarUrl !== (profile?.avatarUrl ?? '')) payload.avatarUrl = avatarUrl || undefined
+              if (unassignSpecializationId) payload.unassignSpecializationId = unassignSpecializationId
+              onSave(payload)
+            }}
+            className="rounded-[8px] bg-[var(--figma-brand)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {busy ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CommissionModal({ open, current, busy, onCancel, onSave, onClear }) {
+  const [ratePct, setRatePct] = useState(
+    current?.overrideRate != null ? String(current.overrideRate * 100) : '20',
+  )
+  const [expires, setExpires] = useState(
+    current?.overrideExpiresAt ? current.overrideExpiresAt.slice(0, 16) : '',
+  )
+
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-[12px] bg-white p-6 shadow-xl">
+        <h2 className="text-lg font-semibold">Commission override</h2>
+        <p className="mt-1 text-sm text-[var(--figma-text-muted)]">Rate must be greater than 0 and at most 28%. Expiry must be in the future.</p>
+        <div className="mt-4 space-y-3">
+          <label className="block text-sm font-semibold">
+            Override rate (%)
+            <input type="number" min="0.01" max="28" step="0.01" value={ratePct} onChange={(e) => setRatePct(e.target.value)} className="mt-1 h-10 w-full rounded-[10px] border px-3 text-sm font-normal" />
+          </label>
+          <label className="block text-sm font-semibold">
+            Expires at
+            <input type="datetime-local" value={expires} onChange={(e) => setExpires(e.target.value)} className="mt-1 h-10 w-full rounded-[10px] border px-3 text-sm font-normal" />
+          </label>
+        </div>
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
+          {current?.overrideRate != null ? (
+            <button type="button" onClick={onClear} className="mr-auto rounded-[8px] px-4 py-2 text-sm font-semibold text-rose-700">
+              Clear override
+            </button>
+          ) : null}
+          <button type="button" onClick={onCancel} className="rounded-[8px] px-4 py-2 text-sm font-semibold">
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={busy || !ratePct || !expires}
+            onClick={() =>
+              onSave({
+                overrideRate: Number(ratePct) / 100,
+                overrideExpiresAt: new Date(expires).toISOString(),
+              })
+            }
+            className="rounded-[8px] bg-[var(--figma-brand)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {busy ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

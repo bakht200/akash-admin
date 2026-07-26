@@ -1,0 +1,9 @@
+name = "akash-adminportal-proxy"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+# Only these paths hit the Worker; the rest of the domain is untouched.
+routes = [
+  { pattern = "akashtherapies.com/adminportal*", zone_name = "akashtherapies.com" },
+  { pattern = "www.akashtherapies.com/adminportal*", zone_name = "akashtherapies.com" },
+]

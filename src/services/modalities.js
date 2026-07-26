@@ -1,22 +1,51 @@
-import { apiGet, apiPatch, apiPost } from '../api/client'
-import { withMockFallback } from '../api/mock'
+import { apiDownload, apiGet, apiPatch, apiPost } from '../api/client'
 
-const MOCK_MODALITIES = [
-  { key: 'yoga', name: 'Yoga', description: 'Movement, breath, and alignment practices.', practitioners: 128 },
-]
-
-export async function fetchModalities() {
-  return withMockFallback(() => apiGet('/admin/modalities'), () => MOCK_MODALITIES, {})
+export async function fetchModalities(params) {
+  return apiGet('/admin/modalities', params)
 }
 
-export async function updateModality(key, payload) {
-  return withMockFallback(
-    () => apiPatch(`/admin/modalities/${key}`, payload),
-    () => ({ ok: true, key, ...payload }),
-    { key, payload },
-  )
+export async function fetchModalityStats() {
+  return apiGet('/admin/modalities/stats')
+}
+
+export async function fetchModalityMatrix(params = { period: 30 }) {
+  return apiGet('/admin/modalities/matrix', params)
+}
+
+export async function fetchModalityTrend(params = { period: 30 }) {
+  return apiGet('/admin/modalities/trend', params)
+}
+
+export async function fetchModalityActivity(params) {
+  return apiGet('/admin/modalities/activity', params)
+}
+
+export async function exportModalitiesCsv(params) {
+  return apiDownload('/admin/modalities/export.csv', params, 'modalities.csv')
+}
+
+export async function requestModalityIconUploadUrl(contentType) {
+  return apiPost('/admin/modalities/icon-upload-url', { contentType })
 }
 
 export async function createModality(payload) {
-  return withMockFallback(() => apiPost('/admin/modalities', payload), () => ({ ok: true, ...payload }), payload)
+  return apiPost('/admin/modalities', payload)
+}
+
+export async function updateModality(id, payload) {
+  return apiPatch(`/admin/modalities/${id}`, payload)
+}
+
+/** Upload file to a presigned S3 URL, then return the publicUrl for create/edit. */
+export async function uploadModalityIcon(file) {
+  const { uploadUrl, publicUrl } = await requestModalityIconUploadUrl(file.type || 'image/png')
+  const res = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type || 'image/png' },
+    body: file,
+  })
+  if (!res.ok) {
+    throw new Error(`Icon upload failed (${res.status})`)
+  }
+  return publicUrl
 }

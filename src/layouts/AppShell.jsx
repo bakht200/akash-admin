@@ -87,10 +87,8 @@ const PAGE_META = [
   {
     path: '/wallet',
     title: 'Wallet Overview',
-    subtitle: 'Manage your platform liquidity and payout reserves.',
-    actions: {
-      secondary: { label: 'Export Statement', icon: 'download', variant: 'outline' },
-    },
+    subtitle: 'Platform Stripe liquidity and balance movements.',
+    actions: null,
   },
   {
     path: '/reviews',
@@ -109,7 +107,6 @@ const PAGE_META = [
       primary: { label: 'Live Refresh', icon: 'refresh' },
     },
   },
-  { path: '/users', title: 'Users', subtitle: 'Manage users and roles.' },
   { path: '/settings', title: 'Settings', subtitle: 'Update your account preferences.' },
 ]
 

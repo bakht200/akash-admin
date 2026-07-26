@@ -1,404 +1,317 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { Download, Eye, EyeOff, Flag, FlagOff } from 'lucide-react'
+import { usePaginatedList } from '../hooks/usePaginatedList'
 import {
-  AlertTriangle,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  Filter,
-  Flag,
-  Star,
-} from 'lucide-react'
-
-const TOTAL_REVIEWS = 1240
-const PER_PAGE = 10
-
-const ALL_ROWS = [
-  {
-    id: '#REV-9821',
-    client: { name: 'Sarah Jenkins' },
-    practitioner: { name: 'Dr. James Chen', role: 'Physiotherapist' },
-    rating: 5,
-    comment: 'Excellent session — felt heard and the exercises helped within days.',
-    date: 'Oct 24, 2023',
-    time: '2:14 PM',
-    status: 'Published',
-    flagged: false,
-    flagReason: null,
-  },
-  {
-    id: '#REV-9820',
-    client: { name: 'Marcus Webb' },
-    practitioner: { name: 'Priya Nair', role: 'Yoga Instructor' },
-    rating: 4,
-    comment: 'Great energy, studio was a bit cold.',
-    date: 'Oct 24, 2023',
-    time: '11:02 AM',
-    status: 'Published',
-    flagged: false,
-    flagReason: null,
-  },
-  {
-    id: '#REV-9819',
-    client: { name: 'Elena Rossi' },
-    practitioner: { name: 'Noah Kim', role: 'Meditation Coach' },
-    rating: 2,
-    comment: 'Not what I expected from the listing. Waste of time.',
-    date: 'Oct 23, 2023',
-    time: '6:45 PM',
-    status: 'Flagged',
-    flagged: true,
-    flagReason: 'INAPPROPRIATE LANGUAGE',
-  },
-  {
-    id: '#REV-9818',
-    client: { name: 'David Okonkwo' },
-    practitioner: { name: 'Amelia Frost', role: 'Breathwork' },
-    rating: 5,
-    comment: 'Life-changing breathwork block. Already booked again.',
-    date: 'Oct 23, 2023',
-    time: '9:30 AM',
-    status: 'Published',
-    flagged: false,
-    flagReason: null,
-  },
-  {
-    id: '#REV-9817',
-    client: { name: 'Rachel Green' },
-    practitioner: { name: 'Tomás Alvarez', role: 'Reiki' },
-    rating: 3,
-    comment: 'Okay experience — hard to verify credentials on site.',
-    date: 'Oct 22, 2023',
-    time: '4:12 PM',
-    status: 'Hidden',
-    flagged: false,
-    flagReason: null,
-  },
-  {
-    id: '#REV-9816',
-    client: { name: 'Priya Nair' },
-    practitioner: { name: 'Sarah Miller', role: 'Counselor' },
-    rating: 5,
-    comment: 'Compassionate and professional. Highly recommend.',
-    date: 'Oct 22, 2023',
-    time: '10:00 AM',
-    status: 'Published',
-    flagged: false,
-    flagReason: null,
-  },
-  {
-    id: '#REV-9815',
-    client: { name: 'James Chen' },
-    practitioner: { name: 'Marcus Webb', role: 'Personal Trainer' },
-    rating: 1,
-    comment: 'Terrible — this person should be removed.',
-    date: 'Oct 21, 2023',
-    time: '8:22 PM',
-    status: 'Flagged',
-    flagged: true,
-    flagReason: 'HARASSMENT',
-  },
-  {
-    id: '#REV-9814',
-    client: { name: 'Olivia Park' },
-    practitioner: { name: 'Dr. James Chen', role: 'Physiotherapist' },
-    rating: 4,
-    comment: 'Solid follow-up plan and clear instructions.',
-    date: 'Oct 21, 2023',
-    time: '3:05 PM',
-    status: 'Published',
-    flagged: false,
-    flagReason: null,
-  },
-  {
-    id: '#REV-9813',
-    client: { name: 'Noah Kim' },
-    practitioner: { name: 'Elena Rossi', role: 'Pilates' },
-    rating: 5,
-    comment: 'Best class I have taken this year.',
-    date: 'Oct 20, 2023',
-    time: '7:40 PM',
-    status: 'Published',
-    flagged: false,
-    flagReason: null,
-  },
-  {
-    id: '#REV-9812',
-    client: { name: 'Sofia Martins' },
-    practitioner: { name: 'Priya Nair', role: 'Yoga Instructor' },
-    rating: 4,
-    comment: 'Lovely instructor, parking was difficult.',
-    date: 'Oct 20, 2023',
-    time: '12:18 PM',
-    status: 'Published',
-    flagged: false,
-    flagReason: null,
-  },
-]
-
-function Avatar({ name }) {
-  const initials = name
-    .replace(/Dr\.\s*/i, '')
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join('')
-  return (
-    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--figma-input-bg)] text-[10px] font-semibold text-[var(--figma-text-muted)] ring-1 ring-[var(--figma-stroke)]">
-      {initials.slice(0, 2) || '—'}
-    </div>
-  )
-}
-
-function StarRow({ value }) {
-  return (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star
-          key={i}
-          className={[
-            'h-3.5 w-3.5',
-            i <= value ? 'fill-amber-400 text-amber-400' : 'fill-none text-[var(--figma-stroke)]',
-          ].join(' ')}
-        />
-      ))}
-    </div>
-  )
-}
-
-function reviewStatusPill(s) {
-  const u = s.toUpperCase()
-  if (u === 'PUBLISHED') return 'bg-emerald-50 text-emerald-800'
-  if (u === 'FLAGGED') return 'bg-rose-50 text-rose-800'
-  if (u === 'HIDDEN') return 'bg-slate-100 text-slate-700'
-  return 'bg-slate-100 text-slate-700'
-}
+  exportReviewsCsv,
+  fetchReviewKpis,
+  fetchReviews,
+  flagReview,
+  hideReview,
+  resolveReviewFlags,
+  unhideReview,
+} from '../services/reviews'
+import LoadingState from '../components/states/LoadingState'
+import ErrorState from '../components/states/ErrorState'
+import EmptyState from '../components/states/EmptyState'
+import Pagination from '../components/Pagination'
+import { formatAdminDateTime, personName } from '../lib/display'
+import { getErrorMessage } from '../lib/errors'
+import { usePermissions } from '../hooks/usePermissions'
 
 export default function Reviews() {
-  const [page, setPage] = useState(1)
-  const [ratingFilter, setRatingFilter] = useState('all')
-  const [flaggedOnly, setFlaggedOnly] = useState(false)
+  const { canFlagReviews, canHideReviews } = usePermissions()
+  const [qInput, setQInput] = useState('')
+  const [kpis, setKpis] = useState(null)
+  const [exporting, setExporting] = useState(false)
+  const [busyId, setBusyId] = useState(null)
 
-  const filteredRows = useMemo(() => {
-    let rows = ALL_ROWS
-    if (flaggedOnly) rows = rows.filter((r) => r.flagged)
-    if (ratingFilter !== 'all') {
-      const n = Number(ratingFilter)
-      rows = rows.filter((r) => r.rating === n)
+  const fetcher = useCallback((params) => {
+    const next = { ...params }
+    if (next.flaggedOnly === 'true') next.flaggedOnly = true
+    else if (next.flaggedOnly === 'false' || next.flaggedOnly === 'all') delete next.flaggedOnly
+    if (next.rating === 'all' || next.rating === '') delete next.rating
+    else if (next.rating != null) next.rating = Number(next.rating)
+    return fetchReviews(next)
+  }, [])
+
+  const list = usePaginatedList(fetcher, {
+    limit: 25,
+    initialFilters: { q: '', rating: 'all', flaggedOnly: 'all' },
+  })
+
+  useEffect(() => {
+    const t = setTimeout(() => list.setFilters({ q: qInput.trim() }), 300)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qInput])
+
+  const reloadKpis = useCallback(async () => {
+    try {
+      setKpis(await fetchReviewKpis())
+    } catch {
+      setKpis(null)
     }
-    return rows
-  }, [ratingFilter, flaggedOnly])
+  }, [])
 
-  const totalPages = Math.max(1, Math.ceil(TOTAL_REVIEWS / PER_PAGE))
-  const rangeStart = (page - 1) * PER_PAGE + 1
-  const rangeEnd = Math.min(page * PER_PAGE, TOTAL_REVIEWS)
+  useEffect(() => {
+    reloadKpis()
+  }, [reloadKpis])
 
-  function clearFilters() {
-    setRatingFilter('all')
-    setFlaggedOnly(false)
-    setPage(1)
+  async function onExport() {
+    setExporting(true)
+    try {
+      const { q, rating, flaggedOnly } = list.filters
+      await exportReviewsCsv({
+        ...(q ? { q } : {}),
+        ...(rating && rating !== 'all' ? { rating: Number(rating) } : {}),
+        ...(flaggedOnly === 'true' ? { flaggedOnly: true } : {}),
+      })
+    } catch (err) {
+      window.alert(getErrorMessage(err, 'Export failed.'))
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  async function runAction(id, fn) {
+    setBusyId(id)
+    try {
+      await fn()
+      list.reload()
+      reloadKpis()
+    } catch (err) {
+      window.alert(getErrorMessage(err))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  function onFlag(row) {
+    const reason = window.prompt('Flag reason (optional)')
+    if (reason === null) return
+    runAction(row.id, () => flagReview(row.id, reason.trim() || undefined))
   }
 
   return (
-    <div className="relative space-y-6 pb-20">
-      {/* Summary */}
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="figma-card p-6 sm:p-7">
-          <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">AVG. RATING</div>
-          <div className="mt-2 text-4xl font-semibold tracking-tight text-[var(--figma-text-strong)]">4.8</div>
-          <div className="mt-3 flex gap-0.5">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Star
-                key={i}
-                className={[
-                  'h-5 w-5',
-                  i <= 4 ? 'fill-amber-400 text-amber-400' : 'fill-amber-400/35 text-amber-400/50',
-                ].join(' ')}
-              />
-            ))}
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-[var(--figma-text-strong)] sm:text-2xl">
+            Reviews
+          </h1>
+          <p className="mt-1 text-sm text-[var(--figma-text-muted)]">
+            Moderate ratings, resolve flags, and control publication visibility.
+          </p>
         </div>
+        <button
+          type="button"
+          disabled={exporting}
+          onClick={onExport}
+          className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-[var(--figma-stroke)] bg-white px-4 text-sm font-semibold disabled:opacity-50"
+        >
+          <Download className="h-4 w-4" />
+          {exporting ? 'Exporting…' : 'Export'}
+        </button>
+      </div>
 
-        <div className="figma-card p-6 sm:p-7">
-          <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">PENDING FLAGS</div>
-          <div className="mt-2 flex flex-wrap items-end gap-3">
-            <span className="text-4xl font-semibold tracking-tight text-rose-600">12</span>
-            <span className="mb-1 inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] text-rose-700 ring-1 ring-rose-200/80">
-              +3 TODAY
-            </span>
-          </div>
-        </div>
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard label="Average rating" value={formatRating(kpis?.averageRating)} />
+        <KpiCard label="Visible reviews" value={formatCount(kpis?.visibleReviews)} />
+        <KpiCard label="Pending flags" value={formatCount(kpis?.pendingFlags)} />
+        <KpiCard label="Flags today" value={formatCount(kpis?.flagsToday)} />
       </section>
 
-      {/* Ledger table */}
       <section className="figma-card overflow-hidden">
-        <div className="border-b border-[var(--figma-stroke)] bg-white px-4 py-4 sm:px-6">
-          <div className="flex flex-col gap-4 rounded-[12px] bg-[var(--figma-input-bg)] px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-3">
-            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-              <div className="relative flex min-w-0 flex-1 items-center gap-2.5 rounded-[10px] border border-[var(--figma-stroke)] bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:max-w-[260px] sm:flex-none">
-                <Filter className="h-4 w-4 shrink-0 text-[var(--figma-text-muted)]" aria-hidden />
-                <select
-                  value={ratingFilter}
-                  onChange={(e) => {
-                    setRatingFilter(e.target.value)
-                    setPage(1)
-                  }}
-                  className="w-full min-w-0 cursor-pointer appearance-none border-0 bg-transparent py-0 pr-7 text-sm font-medium text-[var(--figma-text-strong)] focus:outline-none focus:ring-0"
-                  aria-label="Filter by rating"
-                >
-                  <option value="all">All Ratings</option>
-                  <option value="5">5 Stars</option>
-                  <option value="4">4 Stars</option>
-                  <option value="3">3 Stars</option>
-                  <option value="2">2 Stars</option>
-                  <option value="1">1 Star</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--figma-text-muted)]" aria-hidden />
-              </div>
+        <div className="flex flex-col gap-3 border-b border-[var(--figma-stroke)] bg-white px-4 py-4 sm:flex-row sm:items-center sm:px-6">
+          <input
+            value={qInput}
+            onChange={(e) => setQInput(e.target.value)}
+            placeholder="Search client, practitioner, or comment…"
+            className="h-10 flex-1 rounded-[10px] border border-[var(--figma-stroke)] bg-[var(--figma-input-bg)] px-3 text-sm"
+          />
+          <select
+            value={list.filters.rating ?? 'all'}
+            onChange={(e) => list.setFilters({ rating: e.target.value })}
+            className="h-10 rounded-[10px] border border-[var(--figma-stroke)] bg-white px-3 text-sm font-medium"
+          >
+            <option value="all">All ratings</option>
+            {[5, 4, 3, 2, 1].map((n) => (
+              <option key={n} value={String(n)}>
+                {n} stars
+              </option>
+            ))}
+          </select>
+          <select
+            value={list.filters.flaggedOnly ?? 'all'}
+            onChange={(e) => list.setFilters({ flaggedOnly: e.target.value })}
+            className="h-10 rounded-[10px] border border-[var(--figma-stroke)] bg-white px-3 text-sm font-medium"
+          >
+            <option value="all">All reviews</option>
+            <option value="true">Flagged only</option>
+          </select>
+        </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setFlaggedOnly((v) => !v)
-                  setPage(1)
-                }}
-                className={[
-                  'inline-flex h-[42px] shrink-0 items-center gap-2 rounded-[10px] border px-4 text-sm font-medium shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition',
-                  flaggedOnly
-                    ? 'border-rose-200 bg-white text-rose-900 ring-1 ring-rose-200/80'
-                    : 'border-[var(--figma-stroke)] bg-white text-[var(--figma-text-strong)] hover:bg-[rgba(255,255,255,0.95)]',
-                ].join(' ')}
-              >
-                <Flag className="h-4 w-4 text-rose-600" aria-hidden />
-                Flagged Only
-              </button>
-
-              <div className="hidden h-6 w-px shrink-0 bg-[var(--figma-stroke)] sm:block" aria-hidden />
-
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="shrink-0 text-left text-sm font-medium text-[var(--figma-text-muted)] hover:text-[var(--figma-text)] sm:pl-1"
-              >
-                Clear all filters
-              </button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-4 sm:shrink-0">
-              <p className="text-sm font-medium text-[var(--figma-text-muted)]">
-                Showing {rangeStart}-{rangeEnd} of {TOTAL_REVIEWS.toLocaleString()}
-              </p>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="grid h-9 w-9 place-items-center rounded-[8px] border border-[var(--figma-stroke)] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] disabled:opacity-40"
-                  aria-label="Previous page"
-                >
-                  <ChevronLeft className="h-4 w-4 text-[var(--figma-text-strong)]" />
-                </button>
-                <button
-                  type="button"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className="grid h-9 w-9 place-items-center rounded-[8px] border border-[var(--figma-stroke)] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] disabled:opacity-40"
-                  aria-label="Next page"
-                >
-                  <ChevronRight className="h-4 w-4 text-[var(--figma-text-strong)]" />
-                </button>
-              </div>
-            </div>
+        {list.loading ? (
+          <LoadingState label="Loading reviews…" />
+        ) : list.error ? (
+          <ErrorState message={getErrorMessage(list.error, 'Could not load reviews.')} onRetry={list.reload} />
+        ) : list.items.length === 0 ? (
+          <EmptyState title="No reviews found" />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-[960px] w-full">
+              <thead>
+                <tr className="border-b border-[var(--figma-stroke)] bg-[var(--figma-input-bg)]">
+                  {['Client', 'Practitioner', 'Rating', 'Comment', 'Status', 'When', 'Actions'].map((h) => (
+                    <th
+                      key={h}
+                      className="px-4 py-3 text-left text-[11px] font-semibold tracking-wide text-[var(--figma-text-muted)]"
+                    >
+                      {h.toUpperCase()}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {list.items.map((r) => {
+                  const busy = busyId === r.id
+                  const status = normalizeStatus(r)
+                  const specs = r.healer?.specializations
+                  return (
+                    <tr key={r.id} className="border-b border-[var(--figma-stroke)] last:border-0">
+                      <td className="px-4 py-3 text-sm font-medium">{personName(r.client)}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <div className="font-medium">{personName(r.healer ?? r.practitioner)}</div>
+                        {Array.isArray(specs) && specs.length > 0 ? (
+                          <div className="mt-0.5 text-xs text-[var(--figma-text-muted)]">{specs.join(', ')}</div>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold">{r.healerRating ?? r.rating ?? '—'}</td>
+                      <td className="max-w-xs px-4 py-3 text-sm">
+                        <div className="line-clamp-2">{r.comment || r.body || '—'}</div>
+                        {r.flagReason ? (
+                          <div className="mt-1 text-xs font-semibold text-amber-800">Flag: {r.flagReason}</div>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <StatusBadge status={status} openFlagCount={r.openFlagCount} />
+                      </td>
+                      <td className="px-4 py-3 text-sm whitespace-nowrap">
+                        {r.createdAt ? formatAdminDateTime(r.createdAt) : '—'}
+                        {r.flaggedAt ? (
+                          <div className="text-xs text-[var(--figma-text-muted)]">
+                            Flagged {formatAdminDateTime(r.flaggedAt)}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <div className="flex flex-wrap gap-2">
+                          {canFlagReviews() && status !== 'HIDDEN' ? (
+                            status === 'FLAGGED' || (r.openFlagCount ?? 0) > 0 ? (
+                              <ActionBtn
+                                disabled={busy}
+                                onClick={() => runAction(r.id, () => resolveReviewFlags(r.id))}
+                                icon={FlagOff}
+                                label="Resolve"
+                              />
+                            ) : (
+                              <ActionBtn disabled={busy} onClick={() => onFlag(r)} icon={Flag} label="Flag" />
+                            )
+                          ) : null}
+                          {canHideReviews() ? (
+                            r.isVisible === false || status === 'HIDDEN' ? (
+                              <ActionBtn
+                                disabled={busy}
+                                onClick={() => runAction(r.id, () => unhideReview(r.id))}
+                                icon={Eye}
+                                label="Unhide"
+                              />
+                            ) : (
+                              <ActionBtn
+                                disabled={busy}
+                                onClick={() => runAction(r.id, () => hideReview(r.id))}
+                                icon={EyeOff}
+                                label="Hide"
+                              />
+                            )
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
-        </div>
+        )}
 
-        <div className="overflow-x-auto bg-white">
-          <table className="min-w-[1100px] w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-[var(--figma-stroke)] bg-[var(--figma-input-bg)]">
-                {['Review ID', 'Client', 'Practitioner', 'Rating & Comment', 'Date', 'Status', 'Actions'].map((h) => (
-                  <th
-                    key={h}
-                    className="px-5 py-3 text-left text-[11px] font-semibold tracking-[0.12em] text-[var(--figma-text-muted)] sm:px-6"
-                  >
-                    {h.toUpperCase()}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-sm text-[var(--figma-text-muted)] sm:px-6">
-                    No reviews match your filters.
-                  </td>
-                </tr>
-              ) : null}
-              {filteredRows.map((r) => (
-                <tr key={r.id} className="border-b border-[var(--figma-stroke)] last:border-b-0">
-                  <td className="px-5 py-3 text-sm text-[var(--figma-text-muted)] sm:px-6">{r.id}</td>
-                  <td className="px-5 py-3 sm:px-6">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={r.client.name} />
-                      <div className="min-w-0">
-                        <div className="truncate font-semibold text-[var(--figma-text-strong)]">{r.client.name}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 sm:px-6">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={r.practitioner.name} />
-                      <div className="min-w-0">
-                        <div className="truncate font-semibold text-[var(--figma-text-strong)]">{r.practitioner.name}</div>
-                        <div className="truncate text-xs text-[var(--figma-text-muted)]">{r.practitioner.role}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="max-w-[320px] px-5 py-3 sm:px-6">
-                    <StarRow value={r.rating} />
-                    <p className="mt-2 text-sm leading-snug text-[var(--figma-text)]">{r.comment}</p>
-                    {r.flagged && r.flagReason ? (
-                      <p className="mt-2 flex items-start gap-1.5 text-xs font-semibold text-rose-600">
-                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-                        <span>FLAGGED FOR: {r.flagReason}</span>
-                      </p>
-                    ) : null}
-                  </td>
-                  <td className="px-5 py-3 sm:px-6">
-                    <div className="text-sm font-medium text-[var(--figma-text-strong)]">{r.date}</div>
-                    <div className="text-xs text-[var(--figma-text-muted)]">{r.time}</div>
-                  </td>
-                  <td className="px-5 py-3 sm:px-6">
-                    <span className={['inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold', reviewStatusPill(r.status)].join(' ')}>
-                      {r.status.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 sm:px-6">
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        className="grid h-9 w-9 place-items-center rounded-[10px] border border-[var(--figma-stroke)] bg-[var(--figma-input-bg)] text-[var(--figma-text-muted)] hover:bg-[rgba(244,243,241,0.9)]"
-                        aria-label="Flag review"
-                      >
-                        <Flag className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        className="grid h-9 w-9 place-items-center rounded-[10px] border border-[var(--figma-stroke)] bg-[var(--figma-input-bg)] text-[var(--figma-text-muted)] hover:bg-[rgba(244,243,241,0.9)]"
-                        aria-label="Visibility"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Pagination
+          page={list.page}
+          totalPages={list.totalPages}
+          total={list.total}
+          limit={list.limit}
+          onPageChange={list.setPage}
+          label="reviews"
+        />
       </section>
-
     </div>
   )
+}
+
+function normalizeStatus(r) {
+  if (r.status) return String(r.status).toUpperCase()
+  if (r.isVisible === false) return 'HIDDEN'
+  if ((r.openFlagCount ?? 0) > 0) return 'FLAGGED'
+  return 'PUBLISHED'
+}
+
+function StatusBadge({ status, openFlagCount }) {
+  const tone =
+    status === 'HIDDEN'
+      ? 'bg-slate-100 text-slate-700'
+      : status === 'FLAGGED'
+        ? 'bg-amber-50 text-amber-900'
+        : 'bg-emerald-50 text-emerald-800'
+  return (
+    <span className={['inline-flex items-center gap-1 rounded-[8px] px-2 py-0.5 text-[10px] font-semibold', tone].join(' ')}>
+      {status}
+      {status === 'FLAGGED' && openFlagCount > 0 ? ` · ${openFlagCount}` : ''}
+    </span>
+  )
+}
+
+function KpiCard({ label, value }) {
+  return (
+    <div className="figma-card p-5">
+      <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">
+        {label.toUpperCase()}
+      </div>
+      <div className="mt-2 text-2xl font-semibold text-[var(--figma-text-strong)]">{value}</div>
+    </div>
+  )
+}
+
+function ActionBtn({ disabled, onClick, icon, label }) {
+  const Icon = icon
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="inline-flex h-8 items-center gap-1 rounded-[8px] border border-[var(--figma-stroke)] px-2.5 text-xs font-semibold disabled:opacity-50"
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+    </button>
+  )
+}
+
+function formatRating(value) {
+  if (value == null || Number.isNaN(Number(value))) return '—'
+  return Number(value).toFixed(2)
+}
+
+function formatCount(value) {
+  if (value == null) return '—'
+  return Number(value).toLocaleString()
 }
