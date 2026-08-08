@@ -10,8 +10,8 @@
     "preview": "vite preview",
     "build:staging": "vite build --mode staging",
     "build:production": "vite build --mode production",
-    "deploy:staging": "npm run build:staging && firebase deploy --only hosting --project staging",
-    "deploy:production": "npm run build:production && firebase deploy --only hosting --project production"
+    "deploy:staging": "npm run build:staging && npx -y firebase-tools deploy --only hosting --project staging",
+    "deploy:production": "npm run build:production && npx -y firebase-tools deploy --only hosting --project production"
   },
   "dependencies": {
     "axios": "^1.15.0",

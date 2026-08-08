@@ -99,22 +99,40 @@ apiClient.interceptors.response.use(
   },
 )
 
+/**
+ * Return the payload, not the transport envelope.
+ *
+ * The API answers `{ success: true, data: … }`. Callers want the `data`, and every
+ * caller previously received the envelope while the fixtures they were written against
+ * returned the payload — so real responses were consistently one level too deep. That
+ * mismatch was invisible while any failure fell back to fixtures.
+ *
+ * A body without both keys is passed through untouched, so an endpoint that does not
+ * use the envelope still works.
+ */
+function unwrap(body) {
+  if (body && typeof body === 'object' && 'success' in body && 'data' in body) {
+    return body.data
+  }
+  return body
+}
+
 export async function apiGet(path, params) {
   const { data } = await apiClient.get(path, { params })
-  return data
+  return unwrap(data)
 }
 
 export async function apiPost(path, body) {
   const { data } = await apiClient.post(path, body)
-  return data
+  return unwrap(data)
 }
 
 export async function apiPatch(path, body) {
   const { data } = await apiClient.patch(path, body)
-  return data
+  return unwrap(data)
 }
 
 export async function apiDelete(path) {
   const { data } = await apiClient.delete(path)
-  return data
+  return unwrap(data)
 }

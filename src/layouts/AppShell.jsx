@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Topbar from '../components/Topbar'
 import EnvironmentBadge, { EnvironmentWarningBanner } from '../components/EnvironmentBadge'
+import ErrorBoundary from '../components/ErrorBoundary'
 
 const PAGE_META = [
   {
@@ -186,7 +187,11 @@ export default function AppShell() {
             />
 
             <main className="min-w-0 flex-1 bg-[var(--figma-app-bg)] px-4 pb-8 pt-6 sm:px-6 lg:px-8">
-              <Outlet />
+              {/* Keyed on the path so navigating away from a failed page resets it,
+                  and so one broken page never blanks the whole shell. */}
+              <ErrorBoundary key={location.pathname}>
+                <Outlet />
+              </ErrorBoundary>
             </main>
           </div>
         </div>
