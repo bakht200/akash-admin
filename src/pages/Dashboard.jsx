@@ -143,7 +143,7 @@ function Dashboard() {
             <div className="flex items-center justify-between gap-2">
               <div className="text-sm font-semibold text-[var(--figma-text-strong)]">New Joinings</div>
               <span className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-rose-600 px-2 text-[11px] font-semibold text-white">
-                {kpis.newJoiningsThisWeek}
+                {joinings.length}
               </span>
             </div>
             <div className="mt-1 text-xs text-[var(--figma-text-muted)]">Newly joined this week</div>
