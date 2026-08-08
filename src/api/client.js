@@ -1,6 +1,15 @@
 import axios from 'axios'
-import { getAccessToken, clearSession } from '../auth/session'
+import {
+  getAccessToken,
+  getRefreshToken,
+  clearSession,
+  saveAuthResult,
+  getCurrentUser,
+} from '../auth/session'
 
+// Must include the /api/v1 prefix — request paths start at /admin/...
+// The old fallback of '/api' resolved against the dashboard's own host, so a build
+// with this unset produced 404s that looked like backend faults.
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
 export const apiClient = axios.create({
@@ -8,6 +17,10 @@ export const apiClient = axios.create({
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 })
+
+// Endpoints that must never trigger a token refresh: refreshing on their 401 would
+// recurse, and a failed sign-in is not an expired session.
+const NO_REFRESH = ['/admin/auth/refresh', '/admin/auth/oauth']
 
 apiClient.interceptors.request.use((config) => {
   const token = getAccessToken()
@@ -17,16 +30,72 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
+function goToLogin() {
+  clearSession()
+  if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+    window.location.assign('/login')
+  }
+}
+
+// One refresh at a time. Several requests failing together must not each start their
+// own refresh — the backend rotates the refresh token, so the later ones would present
+// a token already consumed and log the user out mid-session.
+let refreshInFlight = null
+
+async function refreshAccessToken() {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) return null
+
+  // A bare client on purpose: using apiClient here would re-enter these interceptors.
+  const { data } = await axios.post(
+    `${API_BASE}/admin/auth/refresh`,
+    { refreshToken },
+    { headers: { 'Content-Type': 'application/json' }, timeout: 30000 },
+  )
+  const payload = data?.data ?? data
+  if (!payload?.accessToken) return null
+
+  saveAuthResult({
+    accessToken: payload.accessToken,
+    refreshToken: payload.refreshToken,
+    admin: payload.admin ?? getCurrentUser(),
+  })
+  return payload.accessToken
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      clearSession()
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-        window.location.assign('/login')
-      }
+  async (error) => {
+    const original = error.config
+    const status = error.response?.status
+
+    if (status !== 401 || !original) return Promise.reject(error)
+    if (original._retriedAfterRefresh) return Promise.reject(error)
+    if (NO_REFRESH.some((path) => (original.url ?? '').includes(path))) {
+      goToLogin()
+      return Promise.reject(error)
     }
-    return Promise.reject(error)
+    if (!getRefreshToken()) {
+      goToLogin()
+      return Promise.reject(error)
+    }
+
+    try {
+      refreshInFlight = refreshInFlight ?? refreshAccessToken()
+      const token = await refreshInFlight
+      if (!token) {
+        goToLogin()
+        return Promise.reject(error)
+      }
+      original._retriedAfterRefresh = true
+      original.headers = { ...original.headers, Authorization: `Bearer ${token}` }
+      return apiClient(original)
+    } catch (refreshError) {
+      goToLogin()
+      return Promise.reject(refreshError)
+    } finally {
+      refreshInFlight = null
+    }
   },
 )
 
