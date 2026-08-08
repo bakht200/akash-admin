@@ -27,6 +27,10 @@ export function getAccessToken() {
   return getSession()?.accessToken ?? null
 }
 
+export function getRefreshToken() {
+  return getSession()?.refreshToken ?? null
+}
+
 export function getCurrentUser() {
   return getSession()?.user ?? null
 }
@@ -35,19 +39,44 @@ export function getPermissions() {
   return getSession()?.permissions ?? []
 }
 
-/** Mock login until P1 OAuth lands — preserves dev access. */
-export function mockLogin(email, password) {
-  const role =
-    email.includes('finance') ? 'finance' : email.includes('admin') ? 'admin' : 'super_admin'
-  const permissionsByRole = {
-    super_admin: ['*'],
-    admin: ['users:read', 'users:write', 'sessions:read', 'financials:read', 'payments:refund'],
-    finance: ['financials:read', 'payments:refund', 'sessions:read'],
-  }
+/**
+ * Display name for the admin. The API returns firstName/lastName, which are nullable
+ * for a seeded account that has never been edited, so fall back to the email rather
+ * than rendering an empty string.
+ */
+function displayName(admin) {
+  const full = [admin?.firstName, admin?.lastName].filter(Boolean).join(' ').trim()
+  return full || admin?.email || 'Admin'
+}
+
+/**
+ * Store the result of POST /admin/auth/oauth or /admin/auth/refresh.
+ *
+ * Permissions come from the API, which resolves them from the account's role. They are
+ * not derived here: the mapping is deliberately non-obvious — the plain admin role is
+ * excluded from the money-sensitive permissions — so a second copy of that table in the
+ * dashboard would drift and show controls the server rejects.
+ *
+ * They govern presentation only. Every request is authorized server-side.
+ */
+export function saveAuthResult({ accessToken, refreshToken, admin }) {
   setSession({
-    accessToken: 'mock-token',
-    user: { email, role, name: 'Admin User' },
-    permissions: permissionsByRole[role] ?? permissionsByRole.admin,
+    accessToken,
+    refreshToken: refreshToken ?? getRefreshToken(),
+    user: { ...admin, name: displayName(admin) },
+    permissions: admin?.permissions ?? [],
+  })
+  return getSession()
+}
+
+/** Replace the profile without touching tokens — used after GET /admin/auth/me. */
+export function updateStoredAdmin(admin) {
+  const current = getSession()
+  if (!current) return null
+  setSession({
+    ...current,
+    user: { ...admin, name: displayName(admin) },
+    permissions: admin?.permissions ?? current.permissions ?? [],
   })
   return getSession()
 }

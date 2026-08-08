@@ -1,35 +1,64 @@
-import { Lock, Mail } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { isAuthed, mockLogin } from '../auth/auth'
+import {
+  isAuthed,
+  loginWithProvider,
+  isFirebaseConfigured,
+  isAppleSignInEnabled,
+} from '../auth/auth'
 import AppLogo from '../components/AppLogo'
+import EnvironmentBadge from '../components/EnvironmentBadge'
+
+/** Turn a sign-in failure into something that says what to do about it. */
+function describeError(error) {
+  const code = error?.code
+  const status = error?.response?.status
+  const serverMessage = error?.response?.data?.error?.message
+
+  if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+    return 'Sign-in was cancelled.'
+  }
+  if (code === 'auth/popup-blocked') {
+    return 'Your browser blocked the sign-in window. Allow pop-ups for this site and try again.'
+  }
+  if (code === 'auth/operation-not-allowed') {
+    return 'That sign-in method is not enabled for this project yet.'
+  }
+  if (code === 'auth/unauthorized-domain') {
+    return 'This site is not an authorised domain for the Firebase project.'
+  }
+  if (status === 403) {
+    return serverMessage ?? 'This account is not authorised for admin access.'
+  }
+  if (status === 400) {
+    return serverMessage ?? 'Sign-in token was rejected. Check that the dashboard and the API use the same Firebase project.'
+  }
+  if (error?.message?.includes('Network Error') || code === 'ERR_NETWORK') {
+    return 'Could not reach the API. Check the API address for this environment and its allowed origins.'
+  }
+  return serverMessage ?? error?.message ?? 'Sign-in failed.'
+}
 
 export default function Login() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [busy, setBusy] = useState('')
 
   useEffect(() => {
     if (isAuthed()) navigate('/dashboard', { replace: true })
   }, [navigate])
 
-  function onSubmit(e) {
-    e.preventDefault()
+  async function signIn(providerId) {
     setError('')
-
-    const emailNorm = email.trim().toLowerCase()
-    const ok =
-      (emailNorm === 'akash@gmail.com' && password === '123456') ||
-      (emailNorm.endsWith('@akash.life') && password.length >= 6)
-
-    if (!ok) {
-      setError('Invalid email or password.')
-      return
+    setBusy(providerId)
+    try {
+      await loginWithProvider(providerId)
+      navigate('/dashboard', { replace: true })
+    } catch (err) {
+      setError(describeError(err))
+    } finally {
+      setBusy('')
     }
-
-    mockLogin(emailNorm, password)
-    navigate('/dashboard', { replace: true })
   }
 
   return (
@@ -49,66 +78,62 @@ export default function Login() {
               <div className="mt-1 text-[12px] leading-snug text-[var(--figma-text-muted)]">
                 Practitioner Marketplace Portal
               </div>
+              {/* Staging and production are otherwise identical on screen. */}
+              <EnvironmentBadge className="mt-3" />
             </div>
 
             {/* Login card */}
             <div className="figma-card w-full px-6 py-6">
-              <form className="space-y-4" onSubmit={onSubmit}>
-                <div>
-                  <div className="text-[11px] font-semibold tracking-wide text-[var(--figma-text-muted)]">EMAIL ADDRESS</div>
-                  <div className="relative mt-2">
-                    <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--figma-text-muted)]/70" />
-                    <input
-                      className="figma-input w-full pl-11 pr-4 text-sm text-[var(--figma-text)] placeholder:text-[var(--figma-text-muted)]/60"
-                      placeholder="akash@gmail.com"
-                      type="email"
-                      autoComplete="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
+              <div className="text-center">
+                <div className="text-sm font-semibold text-[var(--figma-text-strong)]">
+                  Sign in to continue
                 </div>
+                <div className="mt-1 text-xs text-[var(--figma-text-muted)]">
+                  Access is limited to registered admin accounts.
+                </div>
+              </div>
 
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div className="text-[11px] font-semibold tracking-wide text-[var(--figma-text-muted)]">PASSWORD</div>
+              {!isFirebaseConfigured ? (
+                <div className="mt-5 rounded-[8px] border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+                  Sign-in is not configured for this build. The VITE_FIREBASE_* values are
+                  missing.
+                </div>
+              ) : (
+                <div className="mt-5 space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => signIn('google')}
+                    disabled={Boolean(busy)}
+                    className="btn-figma-primary flex w-full items-center justify-center gap-2 text-sm font-semibold disabled:opacity-60"
+                  >
+                    <GoogleMark />
+                    {busy === 'google' ? 'Signing in…' : 'Continue with Google'}
+                  </button>
+
+                  {isAppleSignInEnabled ? (
                     <button
                       type="button"
-                      className="text-[11px] font-semibold text-[var(--figma-text-strong)] hover:underline"
+                      onClick={() => signIn('apple')}
+                      disabled={Boolean(busy)}
+                      className="flex w-full items-center justify-center gap-2 rounded-[10px] border border-[var(--figma-stroke)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--figma-text-strong)] hover:bg-[var(--figma-input-bg)] disabled:opacity-60"
                     >
-                      Forgot Password?
+                      <AppleMark />
+                      {busy === 'apple' ? 'Signing in…' : 'Continue with Apple'}
                     </button>
-                  </div>
-                  <div className="relative mt-2">
-                    <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--figma-text-muted)]/70" />
-                    <input
-                      className="figma-input w-full pl-11 pr-4 text-sm text-[var(--figma-text)] placeholder:text-[var(--figma-text-muted)]/60"
-                      placeholder="••••••••••"
-                      type="password"
-                      autoComplete="current-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
+                  ) : null}
                 </div>
+              )}
 
-                {error ? (
-                  <div className="rounded-[8px] border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
-                    {error}
-                  </div>
-                ) : null}
-
-                <button type="submit" className="btn-figma-primary mt-2 w-full text-sm font-semibold">
-                  Log Into Dashboard
-                </button>
-
-                <div className="pt-3 text-center text-xs text-[var(--figma-text-muted)]">
-                  Need access to the Akash Admin Portal?{' '}
-                  <button type="button" className="font-semibold text-[var(--figma-text-strong)] hover:underline">
-                    Contact System Admin
-                  </button>
+              {error ? (
+                <div className="mt-4 rounded-[8px] border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+                  {error}
                 </div>
-              </form>
+              ) : null}
+
+              <div className="pt-4 text-center text-xs text-[var(--figma-text-muted)]">
+                Need access to the Akash Admin Portal? Ask a super admin to add your
+                address.
+              </div>
             </div>
 
             <div className="mt-6 flex items-center justify-center gap-5 text-xs text-[var(--figma-text-muted)]">
@@ -129,3 +154,37 @@ export default function Login() {
   )
 }
 
+function GoogleMark() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="#FFC107"
+        d="M43.6 20.1H42V20H24v8h11.3A12 12 0 1 1 24 12c3 0 5.8 1.2 7.9 3.1l5.7-5.7A20 20 0 1 0 44 24c0-1.3-.1-2.6-.4-3.9z"
+        transform="scale(.5)"
+      />
+      <path
+        fill="#FF3D00"
+        d="m6.3 14.7 6.6 4.8A12 12 0 0 1 24 12c3 0 5.8 1.2 7.9 3.1l5.7-5.7A20 20 0 0 0 6.3 14.7z"
+        transform="scale(.5)"
+      />
+      <path
+        fill="#4CAF50"
+        d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2A12 12 0 0 1 12.7 28l-6.6 5.1A20 20 0 0 0 24 44z"
+        transform="scale(.5)"
+      />
+      <path
+        fill="#1976D2"
+        d="M43.6 20.1H42V20H24v8h11.3a12 12 0 0 1-4.1 5.6l6.2 5.2C41 35.3 44 30.1 44 24c0-1.3-.1-2.6-.4-3.9z"
+        transform="scale(.5)"
+      />
+    </svg>
+  )
+}
+
+function AppleMark() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M16.4 12.8c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.7.8-3.4.8-.7 0-1.8-.8-3-.8-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.3 2.9 2.3 1.2 0 1.6-.7 3-.7 1.4 0 1.8.7 3 .7 1.2 0 2.1-1.2 2.9-2.3.6-.9.9-1.4 1.3-2.4-2.3-.9-2.8-3.2-2.8-4.1zM14.3 5.6c.6-.8 1-1.8.9-2.9-1 0-2.2.7-2.8 1.5-.6.7-1.1 1.7-.9 2.8 1.1 0 2.2-.6 2.8-1.4z" />
+    </svg>
+  )
+}
