@@ -1,10 +1,5 @@
-/**
- * Which environment this build talks to, and whether its settings agree.
- *
- * Every value here is fixed at build time. A production bundle built with staging
- * settings behaves normally and shows staging data, so the only defence is making the
- * environment visible in the UI and flagging a build whose parts disagree.
- */
+// Which environment this build talks to. All of it is fixed at build time, so a
+// production bundle built with staging settings looks normal and shows staging data.
 
 const RAW_ENV = (import.meta.env.VITE_APP_ENV || '').trim().toLowerCase()
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
@@ -31,11 +26,8 @@ export function apiHost() {
 
 export const FIREBASE_PROJECT = FIREBASE_PROJECT_ID || '(not set)'
 
-/**
- * Staging's Firebase project is named akash-dev-999d6 and its AWS resources are
- * akash-dev-* — historical naming, not a separate environment. Treat "dev" in a
- * resource name as staging.
- */
+// Staging's project is akash-dev-999d6 and its AWS resources are akash-dev-*.
+// Historical naming — "dev" in a resource name means staging.
 function looksLikeStaging(value) {
   return /(-dev\b|akash-dev|ds26o2otimehm|api-staging|localhost|127\.0\.0\.1)/i.test(value)
 }
@@ -44,10 +36,7 @@ function looksLikeProduction(value) {
   return /(akash-prod|^api\.akashtherapies\.com$)/i.test(value)
 }
 
-/**
- * Any way this build's settings contradict each other or its declared environment.
- * Returns [] when consistent.
- */
+/** Ways this build's settings contradict each other. Empty when consistent. */
 export function environmentWarnings() {
   const warnings = []
   const host = apiHost()
@@ -76,7 +65,7 @@ export function environmentWarnings() {
   return warnings
 }
 
-/** One line naming exactly what this build talks to. Shown in the UI. */
+/** One line naming what this build talks to. */
 export function environmentSummary() {
   return `${ENV_LABEL} · API ${apiHost()} · Firebase ${FIREBASE_PROJECT}`
 }

@@ -1,13 +1,8 @@
 import { Component } from 'react'
 import { AlertTriangle } from 'lucide-react'
 
-/**
- * Catches render errors in a page and shows what failed.
- *
- * Without this, one component reading a field the API does not return unmounts the
- * whole tree and leaves a blank white page with only a console message — which reads
- * as "the dashboard is broken" rather than "this page expects a field that is missing".
- */
+// Catches render errors and names the failure. Without it, one component reading a
+// field the API does not return leaves a blank page with only a console message.
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
@@ -19,7 +14,6 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // Kept so the stack survives in the console for anyone inspecting a report.
     console.error('Page failed to render:', error, info?.componentStack)
   }
 

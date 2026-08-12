@@ -14,13 +14,7 @@ const TONE = {
   unknown: 'border-rose-300 bg-rose-50 text-rose-700',
 }
 
-/**
- * Names the environment this build talks to.
- *
- * Staging and production are visually identical otherwise, and every setting that
- * decides which is which is fixed at build time — so a mislabelled build is invisible
- * without this. Hover for the API host and Firebase project.
- */
+/** Names the environment. Hover for the API host and Firebase project. */
 export default function EnvironmentBadge({ className = '' }) {
   const warnings = environmentWarnings()
   const tone = warnings.length ? TONE.unknown : (TONE[APP_ENV] ?? TONE.unknown)
@@ -36,11 +30,7 @@ export default function EnvironmentBadge({ className = '' }) {
   )
 }
 
-/**
- * Full-width banner for a build whose settings contradict each other — for example a
- * production build pointed at the staging API. Renders nothing when consistent, and
- * never on a clean production build.
- */
+/** Banner for a build whose settings contradict each other. Nothing when consistent. */
 export function EnvironmentWarningBanner() {
   const warnings = environmentWarnings()
   if (!warnings.length) return null
