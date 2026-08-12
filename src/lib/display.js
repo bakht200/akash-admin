@@ -1,6 +1,7 @@
-/** Shared display conventions (FR-7 foundation). */
+/** Shared display conventions for admin dashboard. */
 
 const SESSION_STATUS_LABELS = {
+  pending: 'Pending',
   confirmed: 'Confirmed',
   in_progress: 'In Progress',
   completed: 'Completed',
@@ -15,13 +16,13 @@ const CLIENT_STATUS_LABELS = {
 }
 
 const PRACTITIONER_STATUS_LABELS = {
+  pending: 'Pending',
+  onboarding: 'Onboarding',
   active: 'Active',
   suspended: 'Suspended',
-  dormant: 'Dormant (30d+)',
-  onboarding_incomplete: 'Onboarding Incomplete',
+  deleted: 'Deleted',
 }
 
-/** Normalize legacy mock statuses to backend vocabulary. */
 export function normalizeSessionStatus(status) {
   const key = String(status ?? '')
     .toLowerCase()
@@ -46,8 +47,8 @@ export function normalizePractitionerStatus(status) {
   const key = String(status ?? '')
     .toLowerCase()
     .replace(/\s+/g, '_')
-  if (key === 'pending') return 'onboarding_incomplete'
-  if (key === 'inactive') return 'dormant'
+  if (key === 'onboarding_incomplete') return 'onboarding'
+  if (key === 'inactive') return 'suspended'
   return key
 }
 
@@ -68,6 +69,8 @@ export function sessionStatusLabel(status) {
 export function sessionStatusClass(status) {
   const normalized = normalizeSessionStatus(status)
   switch (normalized) {
+    case 'pending':
+      return 'bg-amber-50 text-amber-800 ring-1 ring-amber-200/80'
     case 'confirmed':
       return 'bg-sky-50 text-sky-800 ring-1 ring-sky-200/80'
     case 'in_progress':
@@ -104,7 +107,10 @@ export function clientStatusClass(status) {
 
 export function practitionerStatusLabel(status) {
   const normalized = normalizePractitionerStatus(status)
-  return PRACTITIONER_STATUS_LABELS[normalized] ?? normalized.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  return (
+    PRACTITIONER_STATUS_LABELS[normalized] ??
+    normalized.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  )
 }
 
 export function practitionerStatusClass(status) {
@@ -112,11 +118,12 @@ export function practitionerStatusClass(status) {
   switch (normalized) {
     case 'active':
       return 'bg-emerald-50 text-emerald-700'
-    case 'onboarding_incomplete':
+    case 'pending':
+    case 'onboarding':
       return 'bg-amber-50 text-amber-800'
     case 'suspended':
       return 'bg-rose-50 text-rose-700'
-    case 'dormant':
+    case 'deleted':
       return 'bg-slate-100 text-slate-700'
     default:
       return 'bg-slate-100 text-slate-700'
@@ -129,6 +136,14 @@ export function formatMoney(amount, currency = 'USD') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n)
 }
 
+/** Format integer cents as currency. */
+export function formatCents(cents, currency = 'USD') {
+  if (cents == null || cents === '') return '—'
+  const n = Number(cents)
+  if (!Number.isFinite(n)) return '—'
+  return formatMoney(n / 100, currency)
+}
+
 export function formatAdminDateTime(date, timeZone) {
   const tz = timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
   const d = date instanceof Date ? date : new Date(date)
@@ -138,10 +153,39 @@ export function formatAdminDateTime(date, timeZone) {
     timeStyle: 'short',
     timeZone: tz,
   }).format(d)
-  const tzLabel = tz.replace(/_/g, ' ')
-  return `${formatted} (${tzLabel})`
+  return formatted
 }
 
-export const SESSION_STATUS_OPTIONS = ['confirmed', 'in_progress', 'completed', 'cancelled', 'no_show']
+export function formatRelativeTime(date) {
+  const d = date instanceof Date ? date : new Date(date)
+  if (Number.isNaN(d.getTime())) return '—'
+  const diffMs = Date.now() - d.getTime()
+  const abs = Math.abs(diffMs)
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+  const minutes = Math.round(abs / 60000)
+  if (minutes < 60) return rtf.format(-Math.sign(diffMs) * minutes || 0, 'minute')
+  const hours = Math.round(minutes / 60)
+  if (hours < 48) return rtf.format(-Math.sign(diffMs) * hours, 'hour')
+  const days = Math.round(hours / 24)
+  return rtf.format(-Math.sign(diffMs) * days, 'day')
+}
+
+export function personName(person) {
+  if (!person) return '—'
+  if (person.name) return person.name
+  const n = [person.firstName, person.lastName].filter(Boolean).join(' ')
+  return n || person.email || '—'
+}
+
+export const SESSION_STATUS_OPTIONS = [
+  'pending',
+  'confirmed',
+  'in_progress',
+  'completed',
+  'cancelled',
+  'no_show',
+]
 
 export const CLIENT_STATUS_OPTIONS = ['active', 'suspended', 'dormant']
+
+export const PRACTITIONER_STATUS_OPTIONS = ['pending', 'onboarding', 'active', 'suspended', 'deleted']

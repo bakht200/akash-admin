@@ -89,10 +89,8 @@ const PAGE_META = [
   {
     path: '/wallet',
     title: 'Wallet Overview',
-    subtitle: 'Manage your platform liquidity and payout reserves.',
-    actions: {
-      secondary: { label: 'Export Statement', icon: 'download', variant: 'outline' },
-    },
+    subtitle: 'Platform Stripe liquidity and balance movements.',
+    actions: null,
   },
   {
     path: '/reviews',
@@ -111,7 +109,6 @@ const PAGE_META = [
       primary: { label: 'Live Refresh', icon: 'refresh' },
     },
   },
-  { path: '/users', title: 'Users', subtitle: 'Manage users and roles.' },
   { path: '/settings', title: 'Settings', subtitle: 'Update your account preferences.' },
 ]
 
@@ -169,9 +166,9 @@ export default function AppShell() {
           <Sidebar mobileOpen={mobileSidebarOpen} onMobileClose={() => setMobileSidebarOpen(false)} />
 
           <div className="flex min-w-0 flex-1 flex-col bg-white">
-            {/* Which environment this build talks to. Staging and production are
-                otherwise indistinguishable on screen, and every setting that decides
-                it is fixed at build time. */}
+            {/* Names the environment this build talks to. Staging and production are
+                otherwise identical on screen, and every setting that decides which is
+                which is fixed at build time. */}
             <EnvironmentWarningBanner />
             <div className="flex justify-end border-b border-[var(--figma-stroke)] bg-white px-4 py-1.5 sm:px-6">
               <EnvironmentBadge />
@@ -187,8 +184,8 @@ export default function AppShell() {
             />
 
             <main className="min-w-0 flex-1 bg-[var(--figma-app-bg)] px-4 pb-8 pt-6 sm:px-6 lg:px-8">
-              {/* Keyed on the path so navigating away from a failed page resets it,
-                  and so one broken page never blanks the whole shell. */}
+              {/* Keyed on the path so navigating away from a failed page resets it, and
+                  so one broken page never blanks the whole shell. */}
               <ErrorBoundary key={location.pathname}>
                 <Outlet />
               </ErrorBoundary>

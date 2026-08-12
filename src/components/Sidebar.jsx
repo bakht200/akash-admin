@@ -2,7 +2,6 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   Bell,
   CalendarDays,
-  ChartColumn,
   CircleDollarSign,
   CreditCard,
   HandCoins,
@@ -12,42 +11,34 @@ import {
   Settings,
   Star,
   Stethoscope,
+  Tag,
   UserRound,
   Users,
   Wallet,
   X,
 } from 'lucide-react'
-import { setAuthed, getCurrentUser } from '../auth/auth'
-import { canReadFinancials } from '../lib/permissions'
+import { logout } from '../auth/auth'
+import { usePermissions } from '../hooks/usePermissions'
 import AppLogo from './AppLogo'
-
-const FINANCIAL_PATHS = new Set(['/revenue', '/transactions', '/payouts', '/wallet'])
 
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
-  { to: '/practitioners', label: 'Practitioners', icon: Stethoscope },
-  { to: '/clients', label: 'Clients', icon: Users },
-  { to: '/modalities', label: 'Modalities', icon: Layers },
-  { to: '/sessions', label: 'Sessions', icon: CalendarDays },
-  { to: '/revenue', label: 'Revenue', icon: CircleDollarSign, financial: true },
-  { to: '/transactions', label: 'Transactions', icon: CreditCard, financial: true },
-  { to: '/payouts', label: 'Payouts', icon: HandCoins, financial: true },
-  { to: '/wallet', label: 'Wallet', icon: Wallet, financial: true },
-  { to: '/reviews', label: 'Reviews', icon: Star },
-  { to: '/notifications', label: 'Notifications', icon: Bell },
+  { to: '/practitioners', label: 'Practitioners', icon: Stethoscope, permission: 'practitioners:read' },
+  { to: '/clients', label: 'Clients', icon: Users, permission: 'clients:read' },
+  { to: '/modalities', label: 'Modalities', icon: Layers, permission: 'modalities:read' },
+  { to: '/sessions', label: 'Sessions', icon: CalendarDays, permission: 'sessions:read' },
+  { to: '/promo-codes', label: 'Promo codes', icon: Tag, permission: 'settings:read' },
+  { to: '/revenue', label: 'Revenue', icon: CircleDollarSign, permission: 'financials:read' },
+  { to: '/transactions', label: 'Transactions', icon: CreditCard, permission: 'financials:read' },
+  { to: '/payouts', label: 'Payouts', icon: HandCoins, permission: 'financials:read' },
+  { to: '/wallet', label: 'Wallet', icon: Wallet, permission: 'financials:read' },
+  { to: '/reviews', label: 'Reviews', icon: Star, permission: 'reviews:read' },
+  { to: '/notifications', label: 'Notifications', icon: Bell, permission: 'notifications:read' },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
-function Item({ to, label, icon: Icon, disabled }) {
-  if (disabled) {
-    return (
-      <div className="flex items-center gap-3 rounded-[10px] px-3 py-2 text-sm text-[var(--figma-text-muted)]">
-        <Icon className="h-4 w-4" />
-        <span>{label}</span>
-      </div>
-    )
-  }
-
+function Item({ to, label, icon }) {
+  const Icon = icon
   return (
     <NavLink
       to={to}
@@ -63,12 +54,7 @@ function Item({ to, label, icon: Icon, disabled }) {
     >
       {({ isActive }) => (
         <>
-          <Icon
-            className={[
-              'h-4 w-4',
-              isActive ? 'text-[var(--figma-brand)]' : 'text-[var(--figma-text-muted)]',
-            ].join(' ')}
-          />
+          <Icon className={['h-4 w-4', isActive ? 'text-[var(--figma-brand)]' : 'text-[var(--figma-text-muted)]'].join(' ')} />
           <span>{label}</span>
         </>
       )}
@@ -78,22 +64,18 @@ function Item({ to, label, icon: Icon, disabled }) {
 
 export default function Sidebar({ mobileOpen, onMobileClose }) {
   const navigate = useNavigate()
-  const user = getCurrentUser()
-  const showFinancial = canReadFinancials()
-  const visibleNav = nav.filter((item) => !item.financial || showFinancial)
+  const { user, can } = usePermissions()
+  const visibleNav = nav.filter((item) => !item.permission || can(item.permission))
 
-  function logout() {
-    setAuthed(null)
+  async function onLogout() {
+    await logout()
     navigate('/login', { replace: true })
   }
 
   return (
     <>
-      {/* Desktop */}
       <aside className="hidden w-[256px] shrink-0 border-r border-[var(--figma-stroke)] bg-white px-4 py-5 lg:flex lg:flex-col">
-       
-          <AppLogo className="h-[60px] w-[150px] object-cover object-left" />
-       
+        <AppLogo className="h-[60px] w-[150px] object-cover object-left" />
 
         <div className="mt-7 space-y-1">
           {visibleNav.map((i) => (
@@ -107,13 +89,13 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
               <UserRound className="h-4 w-4 text-[var(--figma-text-muted)]" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold text-[var(--figma-text-strong)]">{user?.name ?? 'Admin User'}</div>
-              <div className="truncate text-xs text-[var(--figma-text-muted)]">{user?.email ?? 'admin@akash.com'}</div>
+              <div className="truncate text-sm font-semibold text-[var(--figma-text-strong)]">{user?.name ?? 'Admin'}</div>
+              <div className="truncate text-xs text-[var(--figma-text-muted)]">{user?.email ?? ''}</div>
             </div>
           </div>
           <button
             type="button"
-            onClick={logout}
+            onClick={onLogout}
             className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-[var(--figma-input-bg)] px-3 py-2 text-xs font-semibold text-[var(--figma-text)] hover:brightness-[0.98]"
           >
             <LogOut className="h-4 w-4" />
@@ -122,7 +104,6 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
         </div>
       </aside>
 
-      {/* Mobile drawer */}
       <div className={mobileOpen ? 'lg:hidden' : 'hidden'}>
         <div className="fixed inset-0 z-40 bg-black/40" onClick={onMobileClose} />
         <aside className="fixed inset-y-0 left-0 z-50 w-[86%] max-w-[320px] bg-white px-4 py-5 text-[var(--figma-text)] shadow-2xl">
@@ -133,7 +114,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
             <button
               type="button"
               onClick={onMobileClose}
-              className="grid h-9 w-9 place-items-center rounded-[10px] bg-[var(--figma-input-bg)] hover:brightness-[0.98]"
+              className="grid h-9 w-9 place-items-center rounded-[10px] bg-[var(--figma-input-bg)]"
               aria-label="Close navigation"
             >
               <X className="h-5 w-5" />
@@ -152,17 +133,17 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
                 <UserRound className="h-4 w-4 text-[var(--figma-text-muted)]" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-[var(--figma-text-strong)]">Admin User</div>
-                <div className="truncate text-xs text-[var(--figma-text-muted)]">admin@akash.com</div>
+                <div className="truncate text-sm font-semibold text-[var(--figma-text-strong)]">{user?.name ?? 'Admin'}</div>
+                <div className="truncate text-xs text-[var(--figma-text-muted)]">{user?.email ?? ''}</div>
               </div>
             </div>
             <button
               type="button"
               onClick={() => {
                 onMobileClose()
-                logout()
+                onLogout()
               }}
-              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-[var(--figma-input-bg)] px-3 py-2 text-xs font-semibold text-[var(--figma-text)] hover:brightness-[0.98]"
+              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-[var(--figma-input-bg)] px-3 py-2 text-xs font-semibold"
             >
               <LogOut className="h-4 w-4" />
               Logout
@@ -173,4 +154,3 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
     </>
   )
 }
-

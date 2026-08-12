@@ -1,57 +1,88 @@
-import { apiGet } from '../api/client'
-import { withMockFallback } from '../api/mock'
+import { apiDownload, apiGet, apiPost } from '../api/client'
 
-export async function fetchRevenueSummary(params) {
-  return withMockFallback(
-    () => apiGet('/admin/financials/revenue', params),
-    () => ({
-      platformRevenue: 142500,
-      totalProcessed: 428000,
-      monthlyGrowth: 18.2,
-      runRateAnnualized: 1800000,
-    }),
-    params,
-  )
+/** Platform-level all-time financial snapshot. */
+export async function fetchAccountingSnapshot() {
+  return apiGet('/admin/accounting/snapshot')
+}
+
+/**
+ * Range-scoped platform revenue headline.
+ * @param {{ range?: 7|30|90, from?: string, to?: string }} params
+ */
+export async function fetchRevenueSummary(params = { range: 30 }) {
+  return apiGet('/admin/revenue/summary', normalizeRevenueParams(params))
+}
+
+/**
+ * Per-day revenue series for charts + daily ledger.
+ * @param {{ range?: 7|30|90, from?: string, to?: string }} params
+ */
+export async function fetchRevenueDailySeries(params = { range: 30 }) {
+  return apiGet('/admin/revenue/daily-series', normalizeRevenueParams(params))
+}
+
+function normalizeRevenueParams(params = {}) {
+  if (params.from && params.to) {
+    return { from: params.from, to: params.to }
+  }
+  const range = Number(params.range ?? 30)
+  return { range: [7, 30, 90].includes(range) ? range : 30 }
 }
 
 export async function fetchTransactions(params) {
-  return withMockFallback(
-    () => apiGet('/admin/financials/transactions', params),
-    () => ({
-      items: [],
-      total: 0,
-      health: { status: 'ok', label: 'Core services liveness' },
-    }),
-    params,
-  )
+  return apiGet('/admin/transactions', params)
+}
+
+export async function fetchTransactionKpis(params) {
+  return apiGet('/admin/transactions/kpis', params)
+}
+
+/** Full money story for a ledger row. `type` is session_payment | refund | payout. */
+export async function fetchTransactionDetail(type, id) {
+  return apiGet(`/admin/transactions/${encodeURIComponent(type)}/${encodeURIComponent(id)}`)
 }
 
 export async function fetchPayouts(params) {
-  return withMockFallback(() => apiGet('/admin/financials/payouts', params), () => ({ items: [], total: 0 }), params)
+  return apiGet('/admin/payouts', params)
 }
 
+export async function fetchPayoutKpis(params) {
+  return apiGet('/admin/payouts/kpis', params)
+}
+
+export async function fetchPayout(id) {
+  return apiGet(`/admin/payouts/${encodeURIComponent(id)}`)
+}
+
+export async function exportPayoutsCsv(params) {
+  return apiDownload('/admin/payouts/export.csv', params, 'payouts.csv')
+}
+
+/** Re-attempt a failed payout. Requires `payouts:retry`. */
+export async function retryPayout(id, reason) {
+  return apiPost(`/admin/payouts/${encodeURIComponent(id)}/retry`, reason ? { reason } : {})
+}
+
+export async function fetchWalletOverview() {
+  return apiGet('/admin/wallet/overview')
+}
+
+/** @deprecated use fetchWalletOverview */
 export async function fetchWalletBalance() {
-  return withMockFallback(
-    () => apiGet('/admin/financials/wallet/balance'),
-    () => ({
-      available: 842010.15,
-      pending: 442582.27,
-      reservedHealerLiability: 310200,
-      fetchedAt: new Date().toISOString(),
-      stripeReachable: true,
-    }),
-    {},
-  )
+  return fetchWalletOverview()
 }
 
-export async function fetchWalletMovements(params) {
-  return withMockFallback(() => apiGet('/admin/financials/wallet/movements', params), () => ({ items: [], total: 0 }), params)
+/**
+ * Platform Stripe balance-transactions feed.
+ * Cursor pagination: pass `starting_after` = previous `pagination.nextCursor`.
+ * Envelope: `{ items, pagination: { limit, hasMore, nextCursor } }` (no total/page).
+ */
+export async function fetchWalletMovements(params = {}) {
+  const query = { ...params }
+  if (query.starting_after == null) delete query.starting_after
+  return apiGet('/admin/wallet/movements', query)
 }
 
 export async function fetchHealth() {
-  return withMockFallback(
-    () => apiGet('/health'),
-    () => ({ status: 'ok', label: 'Core services liveness' }),
-    {},
-  )
+  return apiGet('/health')
 }

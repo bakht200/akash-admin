@@ -6,12 +6,15 @@ export default function ReasonModal({
   message,
   reasonLabel = 'Reason',
   confirmLabel = 'Confirm',
+  reasonRequired = true,
   onConfirm,
   onCancel,
 }) {
   const [reason, setReason] = useState('')
 
   if (!open) return null
+
+  const canConfirm = reasonRequired ? Boolean(reason.trim()) : true
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -33,7 +36,7 @@ export default function ReasonModal({
           </button>
           <button
             type="button"
-            disabled={!reason.trim()}
+            disabled={!canConfirm}
             onClick={() => onConfirm(reason.trim())}
             className="rounded-[8px] bg-[var(--figma-brand)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >

@@ -1,9 +1,19 @@
-const SESSION_KEY = 'my-portal:session'
+const SESSION_KEY = 'akash-admin:session'
 
 export function getSession() {
   try {
     const raw = localStorage.getItem(SESSION_KEY)
-    return raw ? JSON.parse(raw) : null
+    if (raw) return JSON.parse(raw)
+    // Migrate legacy key once
+    const legacy = localStorage.getItem('my-portal:session')
+    if (legacy) {
+      const parsed = JSON.parse(legacy)
+      localStorage.setItem(SESSION_KEY, legacy)
+      localStorage.removeItem('my-portal:session')
+      localStorage.removeItem('my-portal:isAuthed')
+      return parsed
+    }
+    return null
   } catch {
     return null
   }
@@ -11,12 +21,14 @@ export function getSession() {
 
 export function setSession(session) {
   localStorage.setItem(SESSION_KEY, JSON.stringify(session))
-  localStorage.setItem('my-portal:isAuthed', '1')
+  window.dispatchEvent(new Event('akash-admin:session'))
 }
 
 export function clearSession() {
   localStorage.removeItem(SESSION_KEY)
+  localStorage.removeItem('my-portal:session')
   localStorage.removeItem('my-portal:isAuthed')
+  window.dispatchEvent(new Event('akash-admin:session'))
 }
 
 export function isAuthed() {
@@ -31,8 +43,13 @@ export function getRefreshToken() {
   return getSession()?.refreshToken ?? null
 }
 
+export function setTokens(accessToken, refreshToken) {
+  const current = getSession() ?? {}
+  setSession({ ...current, accessToken, refreshToken })
+}
+
 export function getCurrentUser() {
-  return getSession()?.user ?? null
+  return getSession()?.user ?? getSession()?.admin ?? null
 }
 
 export function getPermissions() {
@@ -40,43 +57,74 @@ export function getPermissions() {
 }
 
 /**
- * Display name for the admin. The API returns firstName/lastName, which are nullable
- * for a seeded account that has never been edited, so fall back to the email rather
- * than rendering an empty string.
+ * Persist an authenticated admin session from OAuth /me payloads.
+ * Accepts either `{ accessToken, refreshToken, admin }` or an admin-only `/me` update.
  */
-function displayName(admin) {
-  const full = [admin?.firstName, admin?.lastName].filter(Boolean).join(' ').trim()
-  return full || admin?.email || 'Admin'
-}
+export function applyAuthSession({ accessToken, refreshToken, admin, permissions } = {}) {
+  const current = getSession() ?? {}
+  const nextAdmin = admin ?? current.admin ?? current.user
+  const nextPermissions =
+    permissions ??
+    admin?.permissions ??
+    current.permissions ??
+    permissionsForRole(nextAdmin?.role)
 
-/**
- * Store the result of POST /admin/auth/oauth or /admin/auth/refresh.
- *
- * Permissions come from the API, which resolves them from the account's role. They are
- * not derived here: the mapping is deliberately non-obvious — the plain admin role is
- * excluded from the money-sensitive permissions — so a second copy of that table in the
- * dashboard would drift and show controls the server rejects.
- *
- * They govern presentation only. Every request is authorized server-side.
- */
-export function saveAuthResult({ accessToken, refreshToken, admin }) {
+  const name = [nextAdmin?.firstName, nextAdmin?.lastName].filter(Boolean).join(' ') || nextAdmin?.email || 'Admin'
+
   setSession({
-    accessToken,
-    refreshToken: refreshToken ?? getRefreshToken(),
-    user: { ...admin, name: displayName(admin) },
-    permissions: admin?.permissions ?? [],
+    accessToken: accessToken ?? current.accessToken,
+    refreshToken: refreshToken ?? current.refreshToken,
+    admin: nextAdmin,
+    user: {
+      id: nextAdmin?.id,
+      email: nextAdmin?.email,
+      role: nextAdmin?.role,
+      name,
+      firstName: nextAdmin?.firstName,
+      lastName: nextAdmin?.lastName,
+      avatarUrl: nextAdmin?.avatarUrl,
+      isActive: nextAdmin?.isActive,
+    },
+    permissions: nextPermissions,
   })
   return getSession()
 }
 
-/** Replace the profile without touching tokens — used after GET /admin/auth/me. */
-export function updateStoredAdmin(admin) {
-  const current = getSession()
-  if (!current) return null
-  setSession({
-    ...current,
-    user: { ...admin, name: displayName(admin) },
-    permissions: admin?.permissions ?? current.permissions ?? [],
-  })
-  return getSession()
+/** Client-side RBAC fallback when the API does not return an explicit permissions array. */
+export function permissionsForRole(role) {
+  switch (role) {
+    case 'super_admin':
+      return ['*']
+    case 'admin':
+      return [
+        'practitioners:read',
+        'practitioners:write',
+        'clients:read',
+        'clients:write',
+        'users:suspend',
+        'sessions:read',
+        'financials:read',
+        'settings:read',
+        'settings:write',
+        'modalities:read',
+        'modalities:write',
+        'reviews:read',
+        'reviews:flag',
+        'reviews:hide',
+        'notifications:read',
+        'notifications:write',
+      ]
+    case 'finance':
+      return [
+        'financials:read',
+        'payments:refund',
+        'payouts:retry',
+        'commission:override',
+        'practitioners:read',
+        'clients:read',
+        'sessions:read',
+      ]
+    default:
+      return []
+  }
 }

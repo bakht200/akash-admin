@@ -2,15 +2,11 @@ import axios from 'axios'
 import {
   getAccessToken,
   getRefreshToken,
+  setTokens,
   clearSession,
-  saveAuthResult,
-  getCurrentUser,
 } from '../auth/session'
 
-// Must include the /api/v1 prefix — request paths start at /admin/...
-// The old fallback of '/api' resolved against the dashboard's own host, so a build
-// with this unset produced 404s that looked like backend faults.
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 
 export const apiClient = axios.create({
   baseURL: API_BASE,
@@ -18,9 +14,20 @@ export const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Endpoints that must never trigger a token refresh: refreshing on their 401 would
-// recurse, and a failed sign-in is not an expired session.
-const NO_REFRESH = ['/admin/auth/refresh', '/admin/auth/oauth']
+let refreshPromise = null
+
+async function refreshAccessToken() {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) throw new Error('No refresh token')
+
+  const { data } = await axios.post(`${API_BASE}/admin/auth/refresh`, { refreshToken })
+  const payload = data?.data ?? data
+  if (!payload?.accessToken || !payload?.refreshToken) {
+    throw new Error('Invalid refresh response')
+  }
+  setTokens(payload.accessToken, payload.refreshToken)
+  return payload.accessToken
+}
 
 apiClient.interceptors.request.use((config) => {
   const token = getAccessToken()
@@ -30,88 +37,57 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
-function goToLogin() {
-  clearSession()
-  if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-    window.location.assign('/login')
-  }
-}
-
-// One refresh at a time. Several requests failing together must not each start their
-// own refresh — the backend rotates the refresh token, so the later ones would present
-// a token already consumed and log the user out mid-session.
-let refreshInFlight = null
-
-async function refreshAccessToken() {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) return null
-
-  // A bare client on purpose: using apiClient here would re-enter these interceptors.
-  const { data } = await axios.post(
-    `${API_BASE}/admin/auth/refresh`,
-    { refreshToken },
-    { headers: { 'Content-Type': 'application/json' }, timeout: 30000 },
-  )
-  const payload = data?.data ?? data
-  if (!payload?.accessToken) return null
-
-  saveAuthResult({
-    accessToken: payload.accessToken,
-    refreshToken: payload.refreshToken,
-    admin: payload.admin ?? getCurrentUser(),
-  })
-  return payload.accessToken
-}
-
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config
     const status = error.response?.status
+    const url = String(original?.url ?? '')
 
-    if (status !== 401 || !original) return Promise.reject(error)
-    if (original._retriedAfterRefresh) return Promise.reject(error)
-    if (NO_REFRESH.some((path) => (original.url ?? '').includes(path))) {
-      goToLogin()
-      return Promise.reject(error)
-    }
-    if (!getRefreshToken()) {
-      goToLogin()
-      return Promise.reject(error)
-    }
+    const isAuthEndpoint =
+      url.includes('/admin/auth/oauth') ||
+      url.includes('/admin/auth/refresh') ||
+      url.includes('/admin/auth/logout')
 
-    try {
-      refreshInFlight = refreshInFlight ?? refreshAccessToken()
-      const token = await refreshInFlight
-      if (!token) {
-        goToLogin()
+    if (status === 401 && original && !original._retry && !isAuthEndpoint) {
+      original._retry = true
+      try {
+        refreshPromise = refreshPromise ?? refreshAccessToken().finally(() => {
+          refreshPromise = null
+        })
+        const accessToken = await refreshPromise
+        original.headers.Authorization = `Bearer ${accessToken}`
+        return apiClient(original)
+      } catch {
+        clearSession()
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.assign('/login')
+        }
         return Promise.reject(error)
       }
-      original._retriedAfterRefresh = true
-      original.headers = { ...original.headers, Authorization: `Bearer ${token}` }
-      return apiClient(original)
-    } catch (refreshError) {
-      goToLogin()
-      return Promise.reject(refreshError)
-    } finally {
-      refreshInFlight = null
     }
+
+    return Promise.reject(error)
   },
 )
 
-/**
- * Return the payload, not the transport envelope.
- *
- * The API answers `{ success: true, data: … }`. Callers want the `data`, and every
- * caller previously received the envelope while the fixtures they were written against
- * returned the payload — so real responses were consistently one level too deep. That
- * mismatch was invisible while any failure fell back to fixtures.
- *
- * A body without both keys is passed through untouched, so an endpoint that does not
- * use the envelope still works.
- */
-function unwrap(body) {
-  if (body && typeof body === 'object' && 'success' in body && 'data' in body) {
+/** Unwrap `{ success, data }` object responses. Passes through list envelopes. */
+export function unwrap(body) {
+  if (body == null) return body
+  if (Object.prototype.hasOwnProperty.call(body, 'items')) {
+    return {
+      success: body.success ?? true,
+      items: body.items ?? [],
+      pagination: body.pagination ?? {
+        page: 1,
+        limit: body.limit ?? body.items?.length ?? 0,
+        total: body.total ?? body.items?.length ?? 0,
+        totalPages: body.totalPages ?? 1,
+      },
+      ...(body.meta != null ? { meta: body.meta } : {}),
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'data')) {
     return body.data
   }
   return body
@@ -135,4 +111,28 @@ export async function apiPatch(path, body) {
 export async function apiDelete(path) {
   const { data } = await apiClient.delete(path)
   return unwrap(data)
+}
+
+/** Download a binary/CSV response and trigger a browser save. */
+export async function apiDownload(path, params, filename = 'export.csv') {
+  const response = await apiClient.get(path, {
+    params,
+    responseType: 'blob',
+    validateStatus: (s) => (s >= 200 && s < 300) || s === 413,
+  })
+
+  if (response.status === 413) {
+    const err = new Error('Export exceeds the row limit. Narrow your filters and try again.')
+    err.response = response
+    throw err
+  }
+
+  const blob = response.data instanceof Blob ? response.data : new Blob([response.data])
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+  return { blob, filename }
 }

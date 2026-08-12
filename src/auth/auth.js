@@ -1,112 +1,85 @@
-import {
-  isAuthed,
-  clearSession,
-  getCurrentUser,
-  getPermissions,
-  getAccessToken,
-  getRefreshToken,
-  saveAuthResult,
-  updateStoredAdmin,
-} from './session'
-import {
-  signInWithProvider,
-  signOutOfFirebase,
-  isFirebaseConfigured,
-  isAppleSignInEnabled,
-} from './firebase'
+import { initializeApp, getApps } from 'firebase/app'
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth'
 import { apiPost, apiGet } from '../api/client'
+import { applyAuthSession, clearSession, getRefreshToken, getAccessToken } from './session'
+
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+}
+
+function assertFirebaseConfigured() {
+  if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId) {
+    throw new Error(
+      'Firebase is not configured. Set VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, and VITE_FIREBASE_PROJECT_ID.',
+    )
+  }
+}
+
+function getFirebaseAuth() {
+  assertFirebaseConfigured()
+  const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig)
+  return getAuth(app)
+}
+
+function deviceInfo() {
+  if (typeof navigator === 'undefined') return 'Admin Dashboard'
+  const ua = navigator.userAgent
+  const platform = navigator.platform || 'unknown'
+  return `${ua.slice(0, 80)} / ${platform}`
+}
+
+export async function signInWithGoogle() {
+  const auth = getFirebaseAuth()
+  const provider = new GoogleAuthProvider()
+  provider.setCustomParameters({ prompt: 'select_account' })
+  const result = await signInWithPopup(auth, provider)
+  const idToken = await result.user.getIdToken()
+  const data = await apiPost('/admin/auth/oauth', {
+    idToken,
+    deviceInfo: deviceInfo(),
+  })
+  applyAuthSession(data)
+  return data
+}
+
+export async function fetchMe() {
+  const data = await apiGet('/admin/auth/me')
+  const admin = data?.admin ?? data
+  applyAuthSession({ admin })
+  return admin
+}
+
+export async function logout() {
+  const refreshToken = getRefreshToken()
+  try {
+    if (getAccessToken() && refreshToken) {
+      await apiPost('/admin/auth/logout', { refreshToken })
+    }
+  } catch {
+    // Always clear local session even if the server call fails
+  }
+  clearSession()
+  try {
+    const auth = getFirebaseAuth()
+    await signOut(auth)
+  } catch {
+    // Firebase may be unconfigured during local teardown
+  }
+}
 
 export {
   isAuthed,
   getCurrentUser,
   getPermissions,
   getAccessToken,
-  getRefreshToken,
-  isFirebaseConfigured,
-  isAppleSignInEnabled,
-}
+  clearSession,
+} from './session'
 
-/**
- * Sign in with an OAuth provider, then exchange the Firebase token for this app's admin
- * session. 'google' and 'apple' are the providers the API recognises.
- *
- * The stored token is the backend's, not Firebase's: it carries the role and permissions
- * the route guards read, and the API accepts only it.
- */
-export async function loginWithProvider(providerId = 'google') {
-  const idToken = await signInWithProvider(providerId)
-
-  let response
-  try {
-    response = await apiPost('/admin/auth/oauth', {
-      idToken,
-      deviceInfo: navigator.userAgent?.slice(0, 255),
-    })
-  } catch (error) {
-    // The Google account is valid but not an admin. Drop the Firebase session too,
-    // otherwise the next attempt silently reuses it and appears to fail for no reason.
-    await signOutOfFirebase()
-    throw error
-  }
-
-  const data = response?.data ?? response
-  if (!data?.accessToken) {
-    await signOutOfFirebase()
-    throw new Error('Sign-in succeeded but the server returned no access token.')
-  }
-  return saveAuthResult(data)
-}
-
-/** Kept as the common case; delegates to loginWithProvider. */
-export async function loginWithGoogle() {
-  return loginWithProvider('google')
-}
-
-/** Refresh the access token. Returns the new one, or null if the session is finished. */
-export async function refreshSession() {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) return null
-
-  const response = await apiPost('/admin/auth/refresh', { refreshToken })
-  const data = response?.data ?? response
-  if (!data?.accessToken) return null
-
-  saveAuthResult({
-    accessToken: data.accessToken,
-    refreshToken: data.refreshToken,
-    admin: data.admin ?? getCurrentUser(),
-  })
-  return data.accessToken
-}
-
-/** Re-read the profile so a role or permission change lands without a re-login. */
-export async function reloadCurrentAdmin() {
-  const response = await apiGet('/admin/auth/me')
-  const admin = (response?.data ?? response)?.admin
-  return admin ? updateStoredAdmin(admin) : null
-}
-
-/**
- * Clear the session locally and in Firebase, and tell the backend so the refresh token
- * is revoked. Local state is cleared regardless of whether that call succeeds.
- */
-export async function logout() {
-  try {
-    if (getAccessToken()) await apiPost('/admin/auth/logout', {})
-  } catch {
-    // A network failure must not leave the browser stuck signed in.
-  }
-  await signOutOfFirebase()
-  clearSession()
-}
-
-/**
- * Kept for the existing call site in the sidebar, which calls setAuthed(null) to log
- * out. Only falsy values are meaningful — authentication happens via loginWithGoogle.
- */
 export function setAuthed(value) {
-  if (!value) {
-    // Fire and forget: the caller navigates immediately after this returns.
-    void logout()
-  }
+  if (!value) clearSession()
 }
