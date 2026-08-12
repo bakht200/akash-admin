@@ -1,6 +1,8 @@
 {
   "projects": {
-    "prod": "akash-dev-999d6"
+    "staging": "akash-dev-999d6",
+    "production": "akash-prod",
+    "default": "akash-dev-999d6"
   },
   "targets": {},
   "etags": {}

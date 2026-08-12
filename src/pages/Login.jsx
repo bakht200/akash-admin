@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { isAuthed, signInWithGoogle } from '../auth/auth'
 import AppLogo from '../components/AppLogo'
+import EnvironmentBadge from '../components/EnvironmentBadge'
 import { getErrorMessage } from '../lib/errors'
 
 export default function Login() {
@@ -43,6 +44,7 @@ export default function Login() {
           <div className="mx-auto flex w-full max-w-[440px] flex-col items-center">
             <div className="mb-5 flex flex-col items-center text-center leading-none">
               <AppLogo className="mx-auto h-28 w-auto max-w-[min(100%,440px)] object-contain object-center sm:h-32 md:h-36" />
+              <EnvironmentBadge className="mt-3" />
               <div className="mt-1 text-[12px] leading-snug text-[var(--figma-text-muted)]">
                 Practitioner Marketplace Portal
               </div>

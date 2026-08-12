@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Topbar from '../components/Topbar'
+import EnvironmentBadge, { EnvironmentWarningBanner } from '../components/EnvironmentBadge'
+import ErrorBoundary from '../components/ErrorBoundary'
 
 const PAGE_META = [
   {
@@ -164,6 +166,14 @@ export default function AppShell() {
           <Sidebar mobileOpen={mobileSidebarOpen} onMobileClose={() => setMobileSidebarOpen(false)} />
 
           <div className="flex min-w-0 flex-1 flex-col bg-white">
+            {/* Names the environment this build talks to. Staging and production are
+                otherwise identical on screen, and every setting that decides which is
+                which is fixed at build time. */}
+            <EnvironmentWarningBanner />
+            <div className="flex justify-end border-b border-[var(--figma-stroke)] bg-white px-4 py-1.5 sm:px-6">
+              <EnvironmentBadge />
+            </div>
+
             <Topbar
               title={meta.title}
               subtitle={meta.subtitle}
@@ -174,7 +184,11 @@ export default function AppShell() {
             />
 
             <main className="min-w-0 flex-1 bg-[var(--figma-app-bg)] px-4 pb-8 pt-6 sm:px-6 lg:px-8">
-              <Outlet />
+              {/* Keyed on the path so navigating away from a failed page resets it, and
+                  so one broken page never blanks the whole shell. */}
+              <ErrorBoundary key={location.pathname}>
+                <Outlet />
+              </ErrorBoundary>
             </main>
           </div>
         </div>
