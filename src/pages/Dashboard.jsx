@@ -199,6 +199,8 @@ export default function Dashboard() {
       ]
     : []
 
+  const hasTrendData =
+    (trend.points || []).length > 0 && (trend.points || []).some((p) => Number(p) > 0)
   const maxTrend = Math.max(1, ...(trend.points || []).map(Number))
 
   return (
@@ -219,8 +221,8 @@ export default function Dashboard() {
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-stretch">
         {canReadFinancials() ? (
-          <div className="lg:col-span-8 h-full">
-            <div className="figma-card h-full rounded-[12px] p-5 sm:p-6">
+          <div className={canReadPractitioners() ? 'lg:col-span-8' : 'lg:col-span-12'}>
+            <div className="figma-card flex h-full min-h-[360px] flex-col rounded-[12px] p-5 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-semibold text-[var(--figma-text-strong)]">Monthly Revenue Flow</div>
@@ -246,57 +248,75 @@ export default function Dashboard() {
                   ))}
                 </div>
               </div>
-              <div className="mt-5">
-                {(trend.points || []).length === 0 ? (
-                  <p className="text-sm text-[var(--figma-text-muted)]">No trend data yet.</p>
-                ) : (
-                  <div
-                    className="grid h-[220px] items-end gap-3 rounded-[12px] bg-[var(--figma-input-bg)] p-4 sm:h-[260px]"
-                    style={{ gridTemplateColumns: `repeat(${trend.points.length}, minmax(0, 1fr))` }}
-                  >
-                    {trend.points.map((h, idx) => (
-                      <div key={`${trend.labels[idx]}-${idx}`} className="flex flex-col items-center gap-3">
-                        <div className="w-full rounded-[10px] bg-[rgba(27,20,100,0.10)]">
-                          <div
-                            className="w-full rounded-[10px] bg-[var(--figma-brand)]"
-                            style={{ height: `${Math.max(8, (Number(h) / maxTrend) * 180)}px` }}
-                            title={formatCents(h)}
-                          />
-                        </div>
-                        <div className="text-[11px] font-semibold text-[var(--figma-text-muted)]">
-                          {trend.labels?.[idx] ?? ''}
-                        </div>
+              {hasTrendData ? (
+                <div
+                  className="mt-5 grid min-h-0 flex-1 items-end gap-3 rounded-[12px] bg-[var(--figma-input-bg)] p-4"
+                  style={{ gridTemplateColumns: `repeat(${trend.points.length}, minmax(0, 1fr))` }}
+                >
+                  {trend.points.map((h, idx) => (
+                    <div key={`${trend.labels[idx]}-${idx}`} className="flex h-full flex-col items-center justify-end gap-3">
+                      <div className="flex w-full flex-1 items-end rounded-[10px] bg-[rgba(27,20,100,0.10)]">
+                        <div
+                          className="w-full rounded-[10px] bg-[var(--figma-brand)]"
+                          style={{ height: `${Math.max(8, (Number(h) / maxTrend) * 100)}%` }}
+                          title={formatCents(h)}
+                        />
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                      <div className="text-[11px] font-semibold text-[var(--figma-text-muted)]">
+                        {trend.labels?.[idx] ?? ''}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-4 flex min-h-0 flex-1 items-center justify-center rounded-[12px] bg-[var(--figma-input-bg)] px-4 py-6 text-sm text-[var(--figma-text-muted)]">
+                  No revenue in this period yet.
+                </div>
+              )}
             </div>
           </div>
         ) : null}
 
         {canReadPractitioners() ? (
           <div className={canReadFinancials() ? 'lg:col-span-4' : 'lg:col-span-12'}>
-            <div className="figma-card rounded-[12px] p-5 sm:p-6 lg:min-h-[360px]">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-sm font-semibold text-[var(--figma-text-strong)]">New Joinings</div>
-                <span className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-rose-600 px-2 text-[11px] font-semibold text-white">
-                  {joiningCount}
-                </span>
+            <div className="figma-card flex h-full min-h-[360px] flex-col rounded-[12px] p-5 sm:p-6">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-[var(--figma-text-strong)]">New Joinings</div>
+                  <div className="mt-1 text-xs text-[var(--figma-text-muted)]">Practitioners joined in the last 7 days</div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/practitioners')}
+                    className="text-xs font-semibold text-[var(--figma-brand)] hover:underline"
+                  >
+                    View all
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/practitioners')}
+                    className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-rose-600 px-2 text-[11px] font-semibold text-white"
+                    title="View all practitioners"
+                  >
+                    {joiningCount}
+                  </button>
+                </div>
               </div>
-              <div className="mt-1 text-xs text-[var(--figma-text-muted)]">Practitioners joined in the last 7 days</div>
-              <div className="mt-4 space-y-3">
-                {joinings.length === 0 ? (
-                  <p className="text-sm text-[var(--figma-text-muted)]">No recent joinings.</p>
-                ) : (
-                  joinings.map((a) => (
+              {joinings.length === 0 ? (
+                <div className="mt-4 flex min-h-0 flex-1 items-center justify-center rounded-[12px] bg-[var(--figma-input-bg)] px-4 py-6 text-sm text-[var(--figma-text-muted)]">
+                  No recent joinings.
+                </div>
+              ) : (
+                <div className="mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+                  {joinings.slice(0, 5).map((a) => (
                     <button
                       key={a.id}
                       type="button"
                       onClick={() => navigate(`/practitioners/${a.id}`)}
                       className="flex w-full items-center gap-3 rounded-[12px] border border-[var(--figma-stroke)] bg-white p-3 text-left hover:bg-[rgba(244,243,241,0.55)]"
                     >
-                      <div className="grid h-9 w-9 place-items-center rounded-full bg-[var(--figma-input-bg)] text-xs font-semibold">
+                      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--figma-input-bg)] text-xs font-semibold">
                         {String(personName(a))
                           .split(' ')
                           .map((p) => p[0])
@@ -305,16 +325,18 @@ export default function Dashboard() {
                           .toUpperCase()}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold text-[var(--figma-text-strong)]">{personName(a)}</div>
+                        <div className="truncate text-sm font-semibold text-[var(--figma-text-strong)]">
+                          {personName(a)}
+                        </div>
                         <div className="mt-0.5 truncate text-xs text-[var(--figma-text-muted)]">{a.email || ''}</div>
                       </div>
-                      <div className="text-[11px] font-semibold text-[var(--figma-text-muted)]/70">
+                      <div className="shrink-0 text-[11px] font-semibold text-[var(--figma-text-muted)]/70">
                         {a.createdAt ? formatAdminDateTime(a.createdAt) : ''}
                       </div>
                     </button>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ) : null}

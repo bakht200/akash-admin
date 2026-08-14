@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Ban, Download, Pencil, Plus } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Ban, Pencil } from 'lucide-react'
 import { usePaginatedList } from '../hooks/usePaginatedList'
 import {
   createModality,
@@ -20,6 +20,8 @@ import ConfirmModal from '../components/modals/ConfirmModal'
 import { formatAdminDateTime, formatRelativeTime } from '../lib/display'
 import { getErrorMessage } from '../lib/errors'
 import { usePermissions } from '../hooks/usePermissions'
+import { resolveModalityIcon } from '../lib/modalityIcons'
+import { useRegisterPageActions } from '../hooks/usePageActions'
 
 export default function Modalities() {
   const { canWriteModalities } = usePermissions()
@@ -69,7 +71,7 @@ export default function Modalities() {
     }
   }, [])
 
-  async function onExport() {
+  const onExport = useCallback(async () => {
     setExporting(true)
     try {
       const { q, isActive } = list.filters
@@ -82,7 +84,31 @@ export default function Modalities() {
     } finally {
       setExporting(false)
     }
-  }
+  }, [list.filters])
+
+  const canWrite = canWriteModalities()
+  const topbarActions = useMemo(
+    () => ({
+      secondary: {
+        label: exporting ? 'Exporting…' : 'Export',
+        icon: 'download',
+        variant: 'outline',
+        disabled: exporting,
+        onClick: onExport,
+      },
+      ...(canWrite
+        ? {
+            primary: {
+              label: 'Add New Modality',
+              icon: 'plus',
+              onClick: () => setEditor({ mode: 'create' }),
+            },
+          }
+        : {}),
+    }),
+    [exporting, canWrite, onExport],
+  )
+  useRegisterPageActions(topbarActions)
 
   async function onSave(payload) {
     setBusy(true)
@@ -148,38 +174,6 @@ export default function Modalities() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-[var(--figma-text-strong)] sm:text-2xl">
-            Modalities
-          </h1>
-          <p className="mt-1 text-sm text-[var(--figma-text-muted)]">
-            Specialization directory with live practitioner counts and demand analytics.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={exporting}
-            onClick={onExport}
-            className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-[var(--figma-stroke)] bg-white px-4 text-sm font-semibold disabled:opacity-50"
-          >
-            <Download className="h-4 w-4" />
-            {exporting ? 'Exporting…' : 'Export'}
-          </button>
-          {canWriteModalities() ? (
-            <button
-              type="button"
-              onClick={() => setEditor({ mode: 'create' })}
-              className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-[var(--figma-brand)] px-4 text-sm font-semibold text-white"
-            >
-              <Plus className="h-4 w-4" />
-              Add New Modality
-            </button>
-          ) : null}
-        </div>
-      </div>
-
       {actionError ? (
         <div className="rounded-[10px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
           {actionError}
@@ -267,11 +261,13 @@ export default function Modalities() {
           <EmptyState title="No modalities found" />
         ) : (
           <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
-            {list.items.map((m) => (
+            {list.items.map((m) => {
+              const iconSrc = resolveModalityIcon(m)
+              return (
               <article key={m.id} className="rounded-[14px] border border-[var(--figma-stroke)] bg-white p-4">
                 <div className="flex items-start gap-3">
-                  {m.iconUrl ? (
-                    <img src={m.iconUrl} alt="" className="h-12 w-12 rounded-[10px] object-cover" />
+                  {iconSrc ? (
+                    <img src={iconSrc} alt="" className="h-12 w-12 shrink-0 object-contain" />
                   ) : (
                     <div className="grid h-12 w-12 place-items-center rounded-[10px] bg-[var(--figma-input-bg)] text-sm font-semibold text-[var(--figma-text-muted)]">
                       {String(m.name || '?')
@@ -335,7 +331,8 @@ export default function Modalities() {
                   </div>
                 ) : null}
               </article>
-            ))}
+              )
+            })}
           </div>
         )}
 
@@ -453,7 +450,7 @@ function ModalityEditorModal({ open, mode, item, busy, error, onCancel, onSave }
     setDescription(item?.description ?? '')
     setPillar(item?.pillar ?? '')
     setDisplayOrder(item?.displayOrder != null ? String(item.displayOrder) : '')
-    setIconUrl(item?.iconUrl ?? '')
+    setIconUrl(item?.iconUrl ?? resolveModalityIcon(item) ?? '')
   }, [open, item])
 
   if (!open) return null
@@ -492,9 +489,13 @@ function ModalityEditorModal({ open, mode, item, busy, error, onCancel, onSave }
           <Field label="Display order" value={displayOrder} onChange={setDisplayOrder} type="number" />
           <div>
             <div className="text-sm font-semibold">Icon</div>
-            {iconUrl ? <img src={iconUrl} alt="" className="mt-2 h-16 w-16 rounded-[10px] object-cover" /> : null}
-            <input type="file" accept="image/*" onChange={onFile} className="mt-2 block w-full text-sm" />
-            {uploading ? <p className="mt-1 text-xs text-[var(--figma-text-muted)]">Uploading…</p> : null}
+            {iconUrl ? <img src={iconUrl} alt="" className="mt-2 h-16 w-16 object-contain" /> : null}
+            <label className="mt-2 inline-flex cursor-pointer items-center gap-2">
+              <input type="file" accept="image/*" onChange={onFile} className="sr-only" disabled={uploading} />
+              <span className="inline-flex h-10 items-center rounded-[8px] border border-[var(--figma-stroke)] bg-white px-4 text-sm font-semibold text-[var(--figma-text-strong)] hover:bg-[rgba(244,243,241,0.7)]">
+                {uploading ? 'Uploading…' : iconUrl ? 'Change file' : 'Choose file'}
+              </span>
+            </label>
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-2">

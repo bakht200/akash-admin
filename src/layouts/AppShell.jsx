@@ -1,9 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Topbar from '../components/Topbar'
 import EnvironmentBadge, { EnvironmentWarningBanner } from '../components/EnvironmentBadge'
 import ErrorBoundary from '../components/ErrorBoundary'
+import { downloadDashboardReport } from '../services/dashboard'
+import { getErrorMessage } from '../lib/errors'
+import { PageActionsProvider, usePageActions } from '../hooks/usePageActions'
 
 const PAGE_META = [
   {
@@ -11,7 +14,7 @@ const PAGE_META = [
     title: 'Executive Ledger',
     subtitle: 'Track key performance metrics and practitioner earnings.',
     actions: {
-      secondary: { label: 'Download Report', icon: 'download' },
+      primary: { label: 'Download Report', icon: 'download' },
     },
   },
   {
@@ -60,9 +63,7 @@ const PAGE_META = [
     path: '/modalities',
     title: 'Modalities Management',
     subtitle: 'Govern disciplines, demand cycles, and practitioner density.',
-    actions: {
-      primary: { label: 'Add New Modality', icon: 'plus' },
-    },
+    actions: null,
   },
   {
     path: '/revenue',
@@ -112,7 +113,7 @@ const PAGE_META = [
   { path: '/settings', title: 'Settings', subtitle: 'Update your account preferences.' },
 ]
 
-const HIDE_SEARCH_PATHS = new Set(['/dashboard', '/revenue', '/wallet'])
+const HIDE_SEARCH_PATHS = new Set(['/dashboard', '/revenue', '/wallet', '/modalities'])
 
 function getSearchPlaceholder(pathname) {
   if (pathname === '/practitioners' || /^\/practitioners\/[^/]+$/.test(pathname)) {
@@ -124,7 +125,6 @@ function getSearchPlaceholder(pathname) {
   if (pathname === '/clients' || /^\/clients\/[^/]+$/.test(pathname)) {
     return 'Search clients…'
   }
-  if (pathname === '/modalities') return 'Search modalities…'
   if (pathname === '/notifications') return 'Search notification records…'
   if (pathname === '/transactions') return 'Search transactions…'
   if (pathname === '/payouts') return 'Search payouts…'
@@ -133,8 +133,18 @@ function getSearchPlaceholder(pathname) {
 }
 
 export default function AppShell() {
+  return (
+    <PageActionsProvider>
+      <AppShellInner />
+    </PageActionsProvider>
+  )
+}
+
+function AppShellInner() {
   const location = useLocation()
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [exportingReport, setExportingReport] = useState(false)
+  const pageActions = usePageActions()
 
   const meta = useMemo(() => {
     const pathname = location.pathname
@@ -156,6 +166,34 @@ export default function AppShell() {
     return { title: 'My Portal', subtitle: '' }
   }, [location.pathname])
 
+  const onDownloadDashboardReport = useCallback(async () => {
+    if (exportingReport) return
+    setExportingReport(true)
+    try {
+      await downloadDashboardReport({ period: '6m' })
+    } catch (err) {
+      window.alert(getErrorMessage(err, 'Could not download dashboard report.'))
+    } finally {
+      setExportingReport(false)
+    }
+  }, [exportingReport])
+
+  const actions = useMemo(() => {
+    if (pageActions) return pageActions
+    if (!meta.actions) return null
+    if (location.pathname !== '/dashboard') return meta.actions
+
+    return {
+      ...meta.actions,
+      primary: {
+        ...meta.actions.primary,
+        label: exportingReport ? 'Preparing…' : 'Download Report',
+        disabled: exportingReport,
+        onClick: onDownloadDashboardReport,
+      },
+    }
+  }, [pageActions, meta.actions, location.pathname, exportingReport, onDownloadDashboardReport])
+
   const showSearch = !HIDE_SEARCH_PATHS.has(location.pathname)
   const searchPlaceholder = getSearchPlaceholder(location.pathname)
 
@@ -174,7 +212,7 @@ export default function AppShell() {
             <Topbar
               title={meta.title}
               subtitle={meta.subtitle}
-              actions={meta.actions}
+              actions={actions}
               searchPlaceholder={searchPlaceholder}
               showSearch={showSearch}
               onOpenSidebar={() => setMobileSidebarOpen(true)}
