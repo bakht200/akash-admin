@@ -13,6 +13,7 @@ import LoadingState from '../components/states/LoadingState'
 import ErrorState from '../components/states/ErrorState'
 import EmptyState from '../components/states/EmptyState'
 import Pagination from '../components/Pagination'
+import PractitionerAvatar from '../components/practitioners/PractitionerAvatar'
 import { getErrorMessage } from '../lib/errors'
 
 const TABS = [
@@ -200,7 +201,7 @@ export default function Practitioners() {
                     >
                       <td className="px-4 py-4 sm:px-6">
                         <div className="flex items-center gap-3">
-                          <Avatar name={name} />
+                          <PractitionerAvatar name={name} avatarUrl={r.avatarUrl || r.photoUrl} className="h-10 w-10 text-xs" />
                           <div className="min-w-0">
                             <div className="truncate text-sm font-semibold text-[var(--figma-text-strong)]">{name}</div>
                             <div className="truncate text-xs text-[var(--figma-text-muted)]">{r.email}</div>
@@ -251,20 +252,6 @@ export default function Practitioners() {
           label="practitioners"
         />
       </section>
-    </div>
-  )
-}
-
-function Avatar({ name }) {
-  const initials = String(name || '')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join('')
-  return (
-    <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--figma-input-bg)] text-xs font-semibold text-[var(--figma-text-muted)]">
-      {initials || '—'}
     </div>
   )
 }

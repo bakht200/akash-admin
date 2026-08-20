@@ -160,10 +160,10 @@ function AppShellInner() {
     }
 
     if (pathname.startsWith('/practitioners/')) {
-      return PAGE_META.find((m) => m.path === '/practitioners/:id') ?? { title: 'My Portal', subtitle: '' }
+      return PAGE_META.find((m) => m.path === '/practitioners/:id') ?? { title: 'Akash Admin', subtitle: '' }
     }
 
-    return { title: 'My Portal', subtitle: '' }
+    return { title: 'Akash Admin', subtitle: '' }
   }, [location.pathname])
 
   const onDownloadDashboardReport = useCallback(async () => {
