@@ -44,6 +44,7 @@ import {
   fetchPractitioner,
   moderatePractitioner,
   reactivatePractitioner,
+  reviewIdentityVerification,
   setCommissionOverride,
   suspendPractitioner,
 } from '../services/practitioners'
@@ -59,6 +60,7 @@ export default function PractitionerDetail() {
   const [error, setError] = useState(null)
   const [suspendOpen, setSuspendOpen] = useState(false)
   const [reactivateOpen, setReactivateOpen] = useState(false)
+  const [identityRejectOpen, setIdentityRejectOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [commissionOpen, setCommissionOpen] = useState(false)
   const [actionError, setActionError] = useState('')
@@ -169,6 +171,36 @@ export default function PractitionerDetail() {
     }
   }
 
+  async function onApproveIdentity() {
+    if (!window.confirm("Approve this practitioner's identity verification? The verified badge will appear on their public profile.")) {
+      return
+    }
+    setBusy(true)
+    setActionError('')
+    try {
+      await reviewIdentityVerification(id, { action: 'approve' })
+      await load()
+    } catch (err) {
+      setActionError(getErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onRejectIdentity(reason) {
+    setBusy(true)
+    setActionError('')
+    try {
+      await reviewIdentityVerification(id, { action: 'reject', reason })
+      setIdentityRejectOpen(false)
+      await load()
+    } catch (err) {
+      setActionError(getErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function onSaveCommission({ overrideRate, overrideExpiresAt }) {
     setBusy(true)
     setActionError('')
@@ -198,71 +230,71 @@ export default function PractitionerDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0 flex-1">
-          <div className="text-xs font-semibold text-[var(--figma-text-muted)]">
-            <Link to="/practitioners" className="hover:text-[var(--figma-text)]">
-              Practitioners
-            </Link>{' '}
-            <span>›</span> Practitioner Profile
-          </div>
+      <div>
+        <div className="text-xs font-semibold text-[var(--figma-text-muted)]">
+          <Link to="/practitioners" className="hover:text-[var(--figma-text)]">
+            Practitioners
+          </Link>{' '}
+          <span>›</span> Practitioner Profile
+        </div>
 
-          <div className="figma-card mt-4 overflow-hidden">
-            <div className="bg-gradient-to-br from-[rgba(27,20,100,0.04)] via-white to-[rgba(244,243,241,0.6)] p-5 sm:p-6">
-              <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
-                <PractitionerAvatar name={name} avatarUrl={profile.avatarUrl} className="h-24 w-24 text-2xl" />
+        <div className="figma-card mt-4 overflow-hidden">
+          <div className="bg-gradient-to-br from-[rgba(27,20,100,0.04)] via-white to-[rgba(244,243,241,0.6)] p-5 sm:p-6">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+              <PractitionerAvatar name={name} avatarUrl={profile.avatarUrl} className="h-24 w-24 text-2xl" />
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="text-2xl font-semibold tracking-tight text-[var(--figma-text-strong)]">{name}</h1>
-                    <span
-                      className={[
-                        'inline-flex rounded-[10px] px-2.5 py-1 text-[11px] font-semibold',
-                        practitionerStatusClass(status),
-                      ].join(' ')}
-                    >
-                      {practitionerStatusLabel(status).toUpperCase()}
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-semibold tracking-tight text-[var(--figma-text-strong)]">{name}</h1>
+                  <span
+                    className={[
+                      'inline-flex rounded-[10px] px-2.5 py-1 text-[11px] font-semibold',
+                      practitionerStatusClass(status),
+                    ].join(' ')}
+                  >
+                    {practitionerStatusLabel(status).toUpperCase()}
+                  </span>
+                  {identity?.status ? (
+                    <span className="inline-flex rounded-[10px] bg-white px-2.5 py-1 text-[11px] font-semibold text-[var(--figma-brand)] ring-1 ring-[var(--figma-stroke)]">
+                      ID: {String(identity.status).replace(/_/g, ' ')}
                     </span>
-                    {identity?.status ? (
-                      <span className="inline-flex rounded-[10px] bg-white px-2.5 py-1 text-[11px] font-semibold text-[var(--figma-brand)] ring-1 ring-[var(--figma-stroke)]">
-                        ID: {String(identity.status).replace(/_/g, ' ')}
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-1 gap-2 text-sm text-[var(--figma-text-muted)] sm:grid-cols-2">
-                    <InfoRow icon={Mail} label={profile.email || '—'} />
-                    <InfoRow
-                      icon={Phone}
-                      label={[profile.phoneCountryCode, profile.phone].filter(Boolean).join(' ') || '—'}
-                    />
-                    <InfoRow icon={MapPin} label={profile.countryOfPractice || profile.country || '—'} />
-                    <InfoRow
-                      icon={Hash}
-                      label={formatShortUuid(profile.id ?? id)}
-                      mono
-                    />
-                    <InfoRow
-                      icon={Calendar}
-                      label={`Joined ${profile.createdAt ? formatAdminDateTime(profile.createdAt) : '—'}`}
-                    />
-                    {(profile.lastActiveAt || data.lastActiveAt) ? (
-                      <InfoRow
-                        icon={Calendar}
-                        label={`Last active ${formatAdminDateTime(profile.lastActiveAt || data.lastActiveAt)}`}
-                      />
-                    ) : null}
-                  </div>
-
-                  <div className="mt-4">
-                    <div className="text-[10px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">
-                      MODALITIES
-                    </div>
-                    <ModalityPills items={modalities} className="mt-2" />
-                  </div>
+                  ) : null}
                 </div>
 
-                <div className="grid shrink-0 grid-cols-3 gap-2 sm:gap-3 lg:min-w-[240px]">
+                <div className="mt-3 grid grid-cols-1 gap-2 text-sm text-[var(--figma-text-muted)] sm:grid-cols-2">
+                  <InfoRow icon={Mail} label={profile.email || '—'} />
+                  <InfoRow
+                    icon={Phone}
+                    label={[profile.phoneCountryCode, profile.phone].filter(Boolean).join(' ') || '—'}
+                  />
+                  <InfoRow icon={MapPin} label={profile.countryOfPractice || profile.country || '—'} />
+                  <InfoRow
+                    icon={Hash}
+                    label={formatShortUuid(profile.id ?? id)}
+                    mono
+                  />
+                  <InfoRow
+                    icon={Calendar}
+                    label={`Joined ${profile.createdAt ? formatAdminDateTime(profile.createdAt) : '—'}`}
+                  />
+                  {(profile.lastActiveAt || data.lastActiveAt) ? (
+                    <InfoRow
+                      icon={Calendar}
+                      label={`Last active ${formatAdminDateTime(profile.lastActiveAt || data.lastActiveAt)}`}
+                    />
+                  ) : null}
+                </div>
+
+                <div className="mt-4">
+                  <div className="text-[10px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">
+                    MODALITIES
+                  </div>
+                  <ModalityPills items={modalities} className="mt-2" />
+                </div>
+              </div>
+
+              <div className="flex w-full shrink-0 flex-col gap-3 sm:w-auto lg:min-w-[240px]">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
                   <QuickStat label="Session" value={formatCents(profile.sessionPriceCents)} />
                   <QuickStat
                     label="Rating"
@@ -279,30 +311,31 @@ export default function PractitionerDetail() {
                   />
                   <QuickStat label="Sessions" value={Number(totalSessions ?? 0).toLocaleString()} />
                 </div>
+                {(canWritePractitioners() || canOverrideCommission()) ? (
+                  <div className="flex flex-wrap gap-2">
+                    {canWritePractitioners() ? (
+                      <button
+                        type="button"
+                        onClick={() => setEditOpen(true)}
+                        className="inline-flex h-10 flex-1 items-center justify-center rounded-[10px] border border-[var(--figma-stroke)] bg-white px-4 text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-strong)] hover:bg-[rgba(244,243,241,0.7)]"
+                      >
+                        MODERATE
+                      </button>
+                    ) : null}
+                    {canOverrideCommission() ? (
+                      <button
+                        type="button"
+                        onClick={() => setCommissionOpen(true)}
+                        className="inline-flex h-10 flex-1 items-center justify-center rounded-[10px] border border-[var(--figma-stroke)] bg-white px-4 text-[11px] font-semibold tracking-[0.14em]"
+                      >
+                        COMMISSION
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-2 lg:w-auto lg:pt-8">
-          {canWritePractitioners() ? (
-            <button
-              type="button"
-              onClick={() => setEditOpen(true)}
-              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[var(--figma-stroke)] bg-white px-4 text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-strong)] hover:bg-[rgba(244,243,241,0.7)]"
-            >
-              MODERATE
-            </button>
-          ) : null}
-          {canOverrideCommission() ? (
-            <button
-              type="button"
-              onClick={() => setCommissionOpen(true)}
-              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[var(--figma-stroke)] bg-white px-4 text-[11px] font-semibold tracking-[0.14em]"
-            >
-              COMMISSION
-            </button>
-          ) : null}
         </div>
       </div>
 
@@ -330,6 +363,16 @@ export default function PractitionerDetail() {
         onCancel={() => setReactivateOpen(false)}
         onConfirm={onReactivate}
       />
+      <ReasonModal
+        open={identityRejectOpen}
+        title="Reject identity verification"
+        message="The verified badge will be hidden on their public profile. They can resubmit documents during onboarding if it is still open."
+        reasonLabel="Reason (optional)"
+        reasonRequired={false}
+        confirmLabel={busy ? 'Rejecting…' : 'Reject'}
+        onCancel={() => setIdentityRejectOpen(false)}
+        onConfirm={onRejectIdentity}
+      />
       <ModerateModal
         key={editOpen ? `mod-${id}` : 'mod-closed'}
         open={editOpen}
@@ -355,6 +398,10 @@ export default function PractitionerDetail() {
             identity={identity}
             refreshing={refreshing}
             onRefresh={() => load({ silent: true })}
+            canWrite={canWritePractitioners()}
+            busy={busy}
+            onApprove={onApproveIdentity}
+            onReject={() => setIdentityRejectOpen(true)}
           />
 
           <div className="figma-card p-5 sm:p-6">
@@ -563,9 +610,19 @@ function CredentialCard({ item, fallbackLabel }) {
   const [imgFailed, setImgFailed] = useState(false)
   const label = credentialLabel(item) || fallbackLabel
   const imageUrl = credentialImageUrl(item)
+  const organization =
+    typeof item === 'object'
+      ? item.issuingOrganization || item.organization || item.issuer || item.institution || null
+      : null
+  const yearCompleted =
+    typeof item === 'object' && item.yearCompleted != null && item.yearCompleted !== ''
+      ? String(item.yearCompleted)
+      : typeof item === 'object' && (item.year || item.issuedAt)
+        ? String(item.year || item.issuedAt)
+        : null
   const meta =
     typeof item === 'object'
-      ? item.meta || item.institution || item.issuer || item.details || item.year || item.issuedAt
+      ? item.meta || item.details || null
       : null
 
   return (
@@ -582,7 +639,15 @@ function CredentialCard({ item, fallbackLabel }) {
       ) : null}
       <div className="px-3 py-2.5">
         <div className="text-sm font-semibold text-[var(--figma-text-strong)]">{label}</div>
-        {meta ? <div className="mt-0.5 text-xs text-[var(--figma-text-muted)]">{String(meta)}</div> : null}
+        {organization ? (
+          <div className="mt-0.5 text-xs text-[var(--figma-text-muted)]">{String(organization)}</div>
+        ) : null}
+        {yearCompleted ? (
+          <div className="mt-0.5 text-xs text-[var(--figma-text-muted)]">Year completed: {yearCompleted}</div>
+        ) : null}
+        {meta && !organization ? (
+          <div className="mt-0.5 text-xs text-[var(--figma-text-muted)]">{String(meta)}</div>
+        ) : null}
         {imageUrl && imgFailed ? (
           <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs font-semibold text-[var(--figma-brand)]">
             Open certificate

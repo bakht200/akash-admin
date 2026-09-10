@@ -17,7 +17,6 @@ function formatIdentityStatus(status) {
   return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-
 function DocumentTile({ label, url, onRefresh }) {
   const [failed, setFailed] = useState(false)
 
@@ -53,10 +52,30 @@ function DocumentTile({ label, url, onRefresh }) {
   )
 }
 
-export default function IdentityVerificationPanel({ identity, refreshing, onRefresh }) {
+function MetaItem({ label, value }) {
+  return (
+    <div className="rounded-[10px] border border-[var(--figma-stroke)] bg-white px-3 py-2.5">
+      <div className="text-[10px] font-semibold tracking-[0.12em] text-[var(--figma-text-muted)]">{label.toUpperCase()}</div>
+      <div className="mt-1 text-sm font-semibold text-[var(--figma-text-strong)]">{value}</div>
+    </div>
+  )
+}
+
+export default function IdentityVerificationPanel({
+  identity,
+  refreshing,
+  onRefresh,
+  canWrite = false,
+  busy = false,
+  onApprove,
+  onReject,
+}) {
   const hasDocs = hasIdentityDocuments(identity)
   const status = identity?.status
+  const statusKey = String(status ?? '').toLowerCase()
   const expiresAt = identity?.documentUrlsExpireAt
+  const showApprove = Boolean(canWrite && onApprove && statusKey && statusKey !== 'verified')
+  const showReject = Boolean(canWrite && onReject && (statusKey === 'pending' || statusKey === 'verified'))
 
   return (
     <div className="figma-card overflow-hidden">
@@ -123,16 +142,32 @@ export default function IdentityVerificationPanel({ identity, refreshing, onRefr
             <DocumentTile key={identity.selfieUrl || 'selfie'} label="Selfie" url={identity.selfieUrl} onRefresh={onRefresh} />
           </div>
         )}
-      </div>
-    </div>
-  )
-}
 
-function MetaItem({ label, value }) {
-  return (
-    <div className="rounded-[10px] border border-[var(--figma-stroke)] bg-white px-3 py-2.5">
-      <div className="text-[10px] font-semibold tracking-[0.12em] text-[var(--figma-text-muted)]">{label.toUpperCase()}</div>
-      <div className="mt-1 text-sm font-semibold text-[var(--figma-text-strong)]">{value}</div>
+        {showApprove || showReject ? (
+          <div className="flex flex-wrap items-center gap-2 border-t border-[var(--figma-stroke)] pt-4">
+            {showApprove ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onApprove}
+                className="inline-flex h-9 items-center rounded-[8px] bg-emerald-700 px-3 text-xs font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
+              >
+                Approve identity
+              </button>
+            ) : null}
+            {showReject ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onReject}
+                className="inline-flex h-9 items-center rounded-[8px] border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+              >
+                Reject identity
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }

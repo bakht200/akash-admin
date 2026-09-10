@@ -16,6 +16,13 @@ export async function moderatePractitioner(id, payload) {
   return apiPatch(`/admin/practitioners/${id}/moderate`, payload)
 }
 
+export async function reviewIdentityVerification(id, { action, reason } = {}) {
+  return apiPatch(`/admin/practitioners/${id}/identity-verification`, {
+    action,
+    ...(reason ? { reason } : {}),
+  })
+}
+
 /** @deprecated use moderatePractitioner */
 export async function updatePractitionerModeration(id, payload) {
   return moderatePractitioner(id, payload)

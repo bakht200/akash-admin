@@ -185,7 +185,15 @@ export function credentialLabel(item) {
   if (typeof item === 'string') return item.trim()
   if (!isPlainObject(item)) return ''
   return String(
-    firstValue(item.name, item.title, item.program, item.issuer, item.institution, item.organization) || '',
+    firstValue(
+      item.name,
+      item.title,
+      item.program,
+      item.issuer,
+      item.institution,
+      item.organization,
+      item.issuingOrganization,
+    ) || '',
   ).trim()
 }
 
