@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { RefreshCw, ShieldCheck } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ExternalLink, RefreshCw, ShieldCheck } from 'lucide-react'
 import { formatAdminDateTime } from '../../lib/display'
 import { hasIdentityDocuments } from '../../lib/identityVerification'
 
@@ -142,6 +143,16 @@ export default function IdentityVerificationPanel({
             <DocumentTile key={identity.selfieUrl || 'selfie'} label="Selfie" url={identity.selfieUrl} onRefresh={onRefresh} />
           </div>
         )}
+
+        {identity?.followUpTicketId ? (
+          <Link
+            to={`/support-tickets/${identity.followUpTicketId}`}
+            className="inline-flex items-center gap-2 rounded-[10px] border border-[var(--figma-stroke)] bg-white px-3 py-2 text-sm font-semibold text-[var(--figma-brand)]"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Open document request ticket
+          </Link>
+        ) : null}
 
         {showApprove || showReject ? (
           <div className="flex flex-wrap items-center gap-2 border-t border-[var(--figma-stroke)] pt-4">

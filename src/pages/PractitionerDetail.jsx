@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   BadgeCheck,
   Calendar,
@@ -54,6 +54,7 @@ import {
 
 export default function PractitionerDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const { canWritePractitioners, canSuspendUsers, canOverrideCommission } = usePermissions()
 
   const [data, setData] = useState(null)
@@ -254,8 +255,13 @@ export default function PractitionerDetail() {
     setBusy(true)
     setActionError('')
     try {
-      await reviewIdentityVerification(id, { action: 'reject', reason })
+      const result = await reviewIdentityVerification(id, { action: 'reject', reason })
       setIdentityRejectOpen(false)
+      const ticketId = result?.followUpTicketId || result?.data?.followUpTicketId
+      if (ticketId) {
+        navigate(`/support-tickets/${ticketId}`)
+        return
+      }
       await load()
     } catch (err) {
       setActionError(getErrorMessage(err))
@@ -429,9 +435,9 @@ export default function PractitionerDetail() {
       <ReasonModal
         open={identityRejectOpen}
         title="Reject identity verification"
-        message="The verified badge will be hidden on their public profile. They can resubmit documents during onboarding if it is still open."
-        reasonLabel="Reason (optional)"
-        reasonRequired={false}
+        message="This hides their verified badge and opens a support ticket asking them to upload more documents. Describe what you need — they will reply on that ticket."
+        reasonLabel="What documents do you need?"
+        reasonRequired={true}
         confirmLabel={busy ? 'Rejecting…' : 'Reject'}
         onCancel={() => setIdentityRejectOpen(false)}
         onConfirm={onRejectIdentity}

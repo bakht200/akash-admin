@@ -111,6 +111,12 @@ const PAGE_META = [
     },
   },
   {
+    path: '/support-tickets',
+    title: 'Support',
+    subtitle: 'Review user requests, identity follow-ups, and ticket attachments.',
+    actions: null,
+  },
+  {
     path: '/support-tickets/:id',
     title: 'Support Ticket',
     subtitle: 'Review and respond to a user support request.',
@@ -135,6 +141,9 @@ function getSearchPlaceholder(pathname) {
   if (pathname === '/transactions') return 'Search transactions…'
   if (pathname === '/payouts') return 'Search payouts…'
   if (pathname === '/reviews') return 'Search reviews…'
+  if (pathname === '/support-tickets' || pathname.startsWith('/support-tickets/')) {
+    return 'Search support tickets…'
+  }
   return 'Search records…'
 }
 
