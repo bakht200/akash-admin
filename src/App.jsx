@@ -19,6 +19,7 @@ import Payouts from './pages/Payouts'
 import Wallet from './pages/Wallet'
 import Reviews from './pages/Reviews'
 import Notifications from './pages/Notifications'
+import SupportTicketDetail from './pages/SupportTicketDetail'
 import Settings from './pages/Settings'
 import PromoCodes from './pages/PromoCodes'
 
@@ -70,6 +71,7 @@ function App() {
             </Route>
             <Route element={<PermissionRoute permission="notifications:read" />}>
               <Route path="/notifications" element={<Notifications />} />
+              <Route path="/support-tickets/:id" element={<SupportTicketDetail />} />
             </Route>
             <Route path="/settings" element={<Settings />} />
           </Route>

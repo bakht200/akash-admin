@@ -26,14 +26,22 @@ export function modalityLabel(item) {
   if (item == null) return ''
   if (typeof item === 'string' || typeof item === 'number') return String(item).trim()
   if (!isPlainObject(item)) return ''
+  const catalogName = String(item.specialization?.name || item.name || '').trim()
+  const isOther =
+    item.isOther === true ||
+    item.specialization?.isOther === true ||
+    catalogName.toLowerCase() === 'other'
   return String(
     firstValue(
-      item.name,
+      isOther ? item.customModalityName : undefined,
+      isOther ? item.other?.modalityName : undefined,
+      isOther ? item.modalityName : undefined,
+      isOther ? undefined : item.name,
       item.title,
       item.label,
       item.specializationName,
-      item.modalityName,
-      item.specialization?.name,
+      isOther ? undefined : item.modalityName,
+      isOther ? undefined : item.specialization?.name,
       item.specialty?.name,
       item.modality?.name,
     ) || '',
@@ -185,7 +193,15 @@ export function credentialLabel(item) {
   if (typeof item === 'string') return item.trim()
   if (!isPlainObject(item)) return ''
   return String(
-    firstValue(item.name, item.title, item.program, item.issuer, item.institution, item.organization) || '',
+    firstValue(
+      item.name,
+      item.title,
+      item.program,
+      item.issuer,
+      item.institution,
+      item.organization,
+      item.issuingOrganization,
+    ) || '',
   ).trim()
 }
 
