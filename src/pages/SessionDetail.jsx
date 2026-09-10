@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Eye, RotateCcw, Video } from 'lucide-react'
+import { Eye, MessageSquare, RotateCcw, Video } from 'lucide-react'
 import ReasonModal from '../components/modals/ReasonModal'
 import LoadingState from '../components/states/LoadingState'
 import ErrorState from '../components/states/ErrorState'
 import {
+  changeReasonLabel,
   formatAdminDateTime,
   formatCents,
   formatShortUuid,
   personName,
-  sessionStatusClass,
   sessionStatusLabel,
+  v2StatusClass,
+  v2StatusLabel,
 } from '../lib/display'
 import { getErrorMessage } from '../lib/errors'
 import { usePermissions } from '../hooks/usePermissions'
@@ -129,9 +131,18 @@ export default function SessionDetail() {
                 <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">OVERVIEW</div>
                 <p className="mt-1 text-sm text-[var(--figma-text-muted)]">Session metadata, participants, and video join audit.</p>
               </div>
-              <span className={['inline-flex rounded-full px-3 py-1 text-[11px] font-semibold', sessionStatusClass(status)].join(' ')}>
-                {sessionStatusLabel(status).toUpperCase()}
-              </span>
+              {/* v2 status names who acted; the coarse v1 status is kept
+                  underneath because filters and older tooling still speak it. */}
+              <div className="text-right">
+                <span
+                  className={['inline-flex rounded-full px-3 py-1 text-[11px] font-semibold', v2StatusClass(d.v2Status, status)].join(' ')}
+                >
+                  {v2StatusLabel(d.v2Status, status).toUpperCase()}
+                </span>
+                {d.v2Status ? (
+                  <div className="mt-1 text-[11px] text-[var(--figma-text-muted)]">{sessionStatusLabel(status)}</div>
+                ) : null}
+              </div>
             </div>
 
             <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
@@ -144,8 +155,15 @@ export default function SessionDetail() {
               <Meta label="End" value={d.scheduledEndUtc ? formatAdminDateTime(d.scheduledEndUtc) : '—'} />
               <Meta label="Modality" value={d.modality?.name || d.modality || '—'} />
             </div>
+            {/* Only set once a session has been moved, so it doubles as the
+                signal that the Start above is not where this began. */}
+            {d.originalStartUtc ? (
+              <div className="mt-3 text-xs text-[var(--figma-text-muted)]">
+                Originally scheduled for {formatAdminDateTime(d.originalStartUtc)}
+              </div>
+            ) : null}
             {d.healerTimezone ? (
-              <div className="mt-3 text-xs text-[var(--figma-text-muted)]">Healer timezone: {d.healerTimezone}</div>
+              <div className="mt-1 text-xs text-[var(--figma-text-muted)]">Practitioner timezone: {d.healerTimezone}</div>
             ) : null}
 
             <div className="mt-6 rounded-[12px] border border-[rgba(27,20,100,0.15)] bg-[rgba(27,20,100,0.06)] p-4">
@@ -160,7 +178,7 @@ export default function SessionDetail() {
                     <span className="font-mono text-[var(--figma-text)]">{video.roomId || '—'}</span>
                   </div>
                   <div>
-                    <span className="font-semibold">Healer joined:</span>{' '}
+                    <span className="font-semibold">Practitioner joined:</span>{' '}
                     {video.healerJoinedAt ? formatAdminDateTime(video.healerJoinedAt) : '—'}
                   </div>
                   <div>
@@ -194,22 +212,94 @@ export default function SessionDetail() {
                     <li key={`${t.type || t.label}-${idx}`} className="relative pb-6 last:pb-0">
                       <span className="absolute -left-[25px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[var(--figma-brand)]" />
                       <div className="text-sm font-semibold text-[var(--figma-text-strong)]">
-                        {t.label || t.type || 'Event'}
+                        {t.label || eventLabel(t.type)}
+                        {t.by ? <span className="font-normal text-[var(--figma-text-muted)]"> · {t.by}</span> : null}
                       </div>
                       <div className="text-xs text-[var(--figma-text-muted)]">
                         {t.at || t.when || t.createdAt ? formatAdminDateTime(t.at || t.when || t.createdAt) : '—'}
                       </div>
+                      {t.reasonCode || t.lateChange || t.respondByUtc ? (
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                          {t.reasonCode ? (
+                            <span className="rounded-[8px] bg-slate-100 px-2 py-0.5 text-slate-700">
+                              {changeReasonLabel(t.reasonCode)}
+                            </span>
+                          ) : null}
+                          {/* A change inside 12h of start is the whole reason
+                              the reason code exists — call it out. */}
+                          {t.lateChange ? (
+                            <span className="rounded-[8px] bg-amber-50 px-2 py-0.5 text-amber-800">Inside 12h</span>
+                          ) : null}
+                          {t.countsAgainstStanding ? (
+                            <span className="rounded-[8px] bg-rose-50 px-2 py-0.5 text-rose-800">Counts against standing</span>
+                          ) : null}
+                          {t.respondByUtc ? (
+                            <span className="text-[var(--figma-text-muted)]">
+                              Respond by {formatAdminDateTime(t.respondByUtc)}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      {t.reason ? (
+                        <div className="mt-1 text-xs text-[var(--figma-text-muted)]">{t.reason}</div>
+                      ) : null}
                     </li>
                   ))
                 )}
               </ul>
             </div>
 
-            {d.cancellation ? (
+            {/* Covers reschedules as well as cancellations, and is the only
+                place the reason code and standing verdict are shown. Clients
+                never see any of this. */}
+            {d.lastChange ? (
+              <div className="mt-6 rounded-[12px] border border-[var(--figma-stroke)] p-4 text-sm">
+                <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">
+                  LAST CHANGE (NOT VISIBLE TO CLIENT)
+                </div>
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <AuditRow label="Type" value={d.lastChange.type === 'cancel' ? 'Cancellation' : 'Reschedule'} />
+                  <AuditRow label="By" value={d.lastChange.by || '—'} />
+                  <AuditRow label="At" value={d.lastChange.at ? formatAdminDateTime(d.lastChange.at) : '—'} />
+                  <AuditRow
+                    label="Reason"
+                    value={d.lastChange.reasonLabel || changeReasonLabel(d.lastChange.reasonCode)}
+                  />
+                  <AuditRow label="Inside 12h" value={d.lastChange.lateChange ? 'Yes' : 'No'} />
+                  <AuditRow label="Counts against standing" value={d.lastChange.countsAgainstStanding ? 'Yes' : 'No'} />
+                </div>
+                {d.lastChange.reasonText ? (
+                  <div className="mt-3 rounded-[10px] bg-slate-50 p-3 text-[var(--figma-text)]">
+                    {d.lastChange.reasonText}
+                  </div>
+                ) : null}
+                {/* "The client asked me to" is the one claim a practitioner can
+                    make that skips client approval, and the chat thread is the
+                    only place to check it. Admin has no message viewer yet, so
+                    surface the thread id rather than link somewhere that 404s. */}
+                {d.lastChange.reasonCode === 'CLIENT_REQUESTED' ? (
+                  <div className="mt-3 flex items-start gap-1.5 text-xs text-[var(--figma-text-muted)]">
+                    <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>
+                      Practitioner claims the client asked for this. Verify in their chat thread
+                      {d.conversationId ? (
+                        <>
+                          {' '}
+                          (<span className="font-mono text-[var(--figma-text)]">{d.conversationId}</span>)
+                        </>
+                      ) : (
+                        ' — no thread exists between them'
+                      )}
+                      .
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+            ) : d.cancellation ? (
               <div className="mt-6 rounded-[12px] border border-[var(--figma-stroke)] p-4 text-sm">
                 <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">CANCELLATION</div>
                 <div className="mt-2 text-[var(--figma-text)]">
-                  Actor: <span className="font-semibold">{d.cancellation.actor || '—'}</span>
+                  Actor: <span className="font-semibold">{d.cancellation.actor || d.cancellation.by || '—'}</span>
                   {d.cancellation.reason ? ` · ${d.cancellation.reason}` : ''}
                 </div>
               </div>
@@ -233,7 +323,7 @@ export default function SessionDetail() {
               ))}
             </div>
             <div className="mt-5 rounded-[12px] bg-white/10 p-4">
-              <div className="text-xs text-white/75">Healer net</div>
+              <div className="text-xs text-white/75">Practitioner net</div>
               <div className="mt-1 text-2xl font-semibold tracking-tight">{formatCents(healerFin.netAmountCents)}</div>
               <div className="mt-2 text-xs text-white/75">
                 Wallet: {healerFin.walletState || '—'}
@@ -273,6 +363,38 @@ function Meta({ label, value }) {
       <div className="mt-1 text-sm font-semibold text-[var(--figma-text-strong)]">{value}</div>
     </div>
   )
+}
+
+function AuditRow({ label, value }) {
+  return (
+    <div className="flex gap-2">
+      <span className="text-[var(--figma-text-muted)]">{label}:</span>
+      <span className="font-semibold text-[var(--figma-text)]">{value}</span>
+    </div>
+  )
+}
+
+const EVENT_LABELS = {
+  booked: 'Booked',
+  healer_joined: 'Practitioner joined',
+  client_joined: 'Client joined',
+  started: 'Started',
+  healer_left: 'Practitioner left',
+  client_left: 'Client left',
+  ended: 'Ended',
+  abandoned: 'Abandoned',
+  cancelled: 'Cancelled',
+  reschedule_requested: 'Reschedule requested',
+  reschedule_approved: 'Reschedule accepted',
+  reschedule_rejected: 'Reschedule declined',
+  // The client never answered a late request, so the session auto-cancelled at
+  // its original start time with a full refund.
+  reschedule_expired: 'Reschedule expired — auto-cancelled',
+}
+
+function eventLabel(type) {
+  if (!type) return 'Event'
+  return EVENT_LABELS[type] ?? String(type).replace(/_/g, ' ').replace(/\b\w/, (c) => c.toUpperCase())
 }
 
 function PersonCard({ label, person, onView }) {

@@ -33,7 +33,6 @@ const RAW_STATUS_OPTIONS = [
   { value: 'succeeded', label: 'succeeded' },
   { value: 'completed', label: 'completed' },
   { value: 'refunded', label: 'refunded' },
-  { value: 'partially_refunded', label: 'partially_refunded' },
   { value: 'refund_failed', label: 'refund_failed' },
   { value: 'pending', label: 'pending' },
   { value: 'processing', label: 'processing' },
@@ -420,7 +419,7 @@ function DetailBody({ type, data, row }) {
         </Section>
       ) : null}
       {healer ? (
-        <Section title="Healer wallet">
+        <Section title="Practitioner wallet">
           <Row label="Session earning" value={formatCents(healer.sessionEarningCents ?? breakdownCents(healer, 'session'))} />
           <Row label="Commission" value={formatCents(healer.commissionCents ?? breakdownCents(healer, 'commission'))} />
           <Row label="Platform fee" value={formatCents(healer.platformFeeCents ?? breakdownCents(healer, 'platform'))} />

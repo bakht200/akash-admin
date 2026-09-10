@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Download } from 'lucide-react'
+import { AlertTriangle, Download } from 'lucide-react'
 import {
+  formatAdminDateTime,
   formatCents,
   personName,
   practitionerStatusClass,
   practitionerStatusLabel,
 } from '../lib/display'
 import { usePaginatedList } from '../hooks/usePaginatedList'
-import { exportPractitionersCsv, fetchPractitioners } from '../services/practitioners'
+import { exportPractitionersCsv, fetchPractitioners, fetchStandingQueue } from '../services/practitioners'
 import LoadingState from '../components/states/LoadingState'
 import ErrorState from '../components/states/ErrorState'
 import EmptyState from '../components/states/EmptyState'
@@ -29,6 +30,7 @@ export default function Practitioners() {
   const [qInput, setQInput] = useState('')
   const [exporting, setExporting] = useState(false)
   const [tabCounts, setTabCounts] = useState({})
+  const [standingQueue, setStandingQueue] = useState([])
 
   const fetcher = useCallback((params) => fetchPractitioners(params), [])
   const list = usePaginatedList(fetcher, {
@@ -62,6 +64,23 @@ export default function Practitioners() {
     }
   }, [])
 
+  // Open standing reviews. Rendered above the list because reaching the review
+  // threshold raises a queue item and nothing else — v2 never suspends
+  // automatically, so a human has to notice.
+  useEffect(() => {
+    let cancelled = false
+    fetchStandingQueue()
+      .then((res) => {
+        if (!cancelled) setStandingQueue(res?.items ?? res ?? [])
+      })
+      .catch(() => {
+        if (!cancelled) setStandingQueue([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   async function onExport() {
     setExporting(true)
     try {
@@ -85,6 +104,37 @@ export default function Practitioners() {
 
   return (
     <div className="space-y-4">
+      {standingQueue.length > 0 ? (
+        <section className="figma-card overflow-hidden border-l-4 border-l-rose-400">
+          <div className="flex items-center gap-2 border-b border-[var(--figma-stroke)] px-4 py-3 sm:px-6">
+            <AlertTriangle className="h-4 w-4 text-rose-700" />
+            <div className="text-sm font-semibold text-[var(--figma-text-strong)]">
+              Standing reviews ({standingQueue.length})
+            </div>
+          </div>
+          <ul className="divide-y divide-[var(--figma-stroke)]">
+            {standingQueue.map((row) => (
+              <li key={row.healer.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+                <div>
+                  <div className="text-sm font-semibold text-[var(--figma-text-strong)]">{row.healer.name}</div>
+                  <div className="text-xs text-[var(--figma-text-muted)]">
+                    {row.standing.countingCount} late changes in the last {row.standing.windowDays} days · flagged{' '}
+                    {row.flaggedAt ? formatAdminDateTime(row.flaggedAt) : '—'}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/practitioners/${encodeURIComponent(row.healer.id)}#standing`)}
+                  className="inline-flex h-9 items-center rounded-[10px] border border-[var(--figma-stroke)] bg-white px-4 text-sm font-semibold text-[var(--figma-text-strong)] hover:bg-[var(--figma-input-bg)]"
+                >
+                  Review
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section className="figma-card overflow-hidden">
         <div className="border-b border-[var(--figma-stroke)] bg-white px-4 pt-3 sm:px-6">
           <div className="flex flex-wrap items-center gap-5">

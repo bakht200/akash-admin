@@ -17,6 +17,7 @@ import LoadingState from '../components/states/LoadingState'
 import ErrorState from '../components/states/ErrorState'
 import IdentityVerificationPanel from '../components/practitioners/IdentityVerificationPanel'
 import PractitionerAvatar from '../components/practitioners/PractitionerAvatar'
+import StandingPanel from '../components/practitioners/StandingPanel'
 import { hasIdentityDocuments } from '../lib/identityVerification'
 import {
   formatAdminDateTime,
@@ -42,8 +43,10 @@ import {
   clearCommissionOverride,
   fetchCommissionOverride,
   fetchPractitioner,
+  fetchPractitionerStanding,
   moderatePractitioner,
   reactivatePractitioner,
+  resolveStandingReview,
   reviewIdentityVerification,
   setCommissionOverride,
   suspendPractitioner,
@@ -65,6 +68,22 @@ export default function PractitionerDetail() {
   const [commissionOpen, setCommissionOpen] = useState(false)
   const [actionError, setActionError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [standing, setStanding] = useState(null)
+  const [standingLoading, setStandingLoading] = useState(true)
+  const [standingError, setStandingError] = useState('')
+  const [resolveOpen, setResolveOpen] = useState(false)
+
+  const loadStanding = useCallback(async () => {
+    setStandingError('')
+    try {
+      setStanding(await fetchPractitionerStanding(id))
+    } catch (err) {
+      setStanding(null)
+      setStandingError(getErrorMessage(err, 'Could not load standing.'))
+    } finally {
+      setStandingLoading(false)
+    }
+  }, [id])
 
   const load = useCallback(
     async ({ silent = false } = {}) => {
@@ -97,18 +116,49 @@ export default function PractitionerDetail() {
     load()
   }, [load])
 
-  // The identity-review notification links to this anchor. The panel is not in
-  // the DOM until the async profile load completes, so browser-native hash
-  // scrolling fires too early unless we repeat it here.
+  // Standing loads separately from the profile so a standing failure leaves the
+  // rest of the page usable.
   useEffect(() => {
-    if (!data || window.location.hash !== '#identity-verification') return
+    loadStanding()
+  }, [loadStanding])
+
+  const handleResolveStanding = useCallback(
+    async (note) => {
+      setBusy(true)
+      setActionError('')
+      try {
+        await resolveStandingReview(id, note)
+        setResolveOpen(false)
+        await loadStanding()
+      } catch (err) {
+        setActionError(getErrorMessage(err, 'Could not resolve the standing review.'))
+      } finally {
+        setBusy(false)
+      }
+    },
+    [id, loadStanding],
+  )
+
+  // Notification / queue links land on these anchors. The panels are not in
+  // the DOM until the async loads complete, so browser-native hash scrolling
+  // fires too early unless we repeat it here.
+  useEffect(() => {
+    const hash = window.location.hash
+    if (!data) return
+    const targetId =
+      hash === '#identity-verification'
+        ? 'identity-verification'
+        : hash === '#standing' && !standingLoading
+          ? 'standing'
+          : null
+    if (!targetId) return
     window.requestAnimationFrame(() => {
-      document.getElementById('identity-verification')?.scrollIntoView({
+      document.getElementById(targetId)?.scrollIntoView({
         behavior: 'smooth',
         block: 'start',
       })
     })
-  }, [data])
+  }, [data, standingLoading])
 
   const identity = data?.identityVerification
   const expiresAt = identity?.documentUrlsExpireAt
@@ -386,6 +436,16 @@ export default function PractitionerDetail() {
         onCancel={() => setIdentityRejectOpen(false)}
         onConfirm={onRejectIdentity}
       />
+      <ReasonModal
+        open={resolveOpen}
+        title="Resolve standing review"
+        message="Records that you reviewed this practitioner's late changes. It does not suspend the account — suspend separately if that is the outcome."
+        reasonLabel="Note (optional)"
+        reasonRequired={false}
+        confirmLabel={busy ? 'Resolving…' : 'Resolve'}
+        onCancel={() => setResolveOpen(false)}
+        onConfirm={handleResolveStanding}
+      />
       <ModerateModal
         key={editOpen ? `mod-${id}` : 'mod-closed'}
         open={editOpen}
@@ -416,6 +476,18 @@ export default function PractitionerDetail() {
               busy={busy}
               onApprove={onApproveIdentity}
               onReject={() => setIdentityRejectOpen(true)}
+            />
+          </div>
+
+          <div id="standing" className="scroll-mt-28">
+            <StandingPanel
+              standing={standing?.standing}
+              lateChanges={standing?.lateChanges}
+              loading={standingLoading}
+              error={standingError}
+              canWrite={canWritePractitioners()}
+              busy={busy}
+              onResolve={() => setResolveOpen(true)}
             />
           </div>
 

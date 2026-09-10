@@ -50,3 +50,25 @@ export async function setCommissionOverride(id, { overrideRate, overrideExpiresA
 export async function clearCommissionOverride(id) {
   return apiDelete(`/admin/practitioners/${id}/commission-override`)
 }
+
+/**
+ * Standing = late session changes (inside 12h of start) over a rolling 90 days.
+ * Returns `{ standing, lateChanges }`; `lateChanges` includes non-counting rows
+ * too, because the pattern matters as much as the score.
+ */
+export async function fetchPractitionerStanding(id) {
+  return apiGet(`/admin/practitioners/${id}/standing`)
+}
+
+/** Practitioners whose standing crossed the review threshold and is still open. */
+export async function fetchStandingQueue(params) {
+  return apiGet('/admin/practitioners/standing/queue', params)
+}
+
+/**
+ * Close out a standing review. This records the decision only — it never
+ * suspends the account, which stays a separate deliberate action.
+ */
+export async function resolveStandingReview(id, note) {
+  return apiPost(`/admin/practitioners/${id}/standing/resolve`, note ? { note } : {})
+}

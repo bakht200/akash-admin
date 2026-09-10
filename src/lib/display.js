@@ -86,6 +86,87 @@ export function sessionStatusClass(status) {
   }
 }
 
+/**
+ * v2 status names. The server derives these per session and sends them as
+ * `v2Status` alongside the coarser `status` the rest of admin filters on. They
+ * say *who* changed a session, which the v1 `cancelled` never did.
+ */
+const V2_STATUS_LABELS = {
+  BOOKED: 'Booked',
+  CANCELLED_BY_CLIENT: 'Cancelled by client',
+  CANCELLED_BY_PRACTITIONER: 'Cancelled by practitioner',
+  RESCHEDULED_BY_CLIENT: 'Rescheduled by client',
+  RESCHEDULE_REQUESTED_BY_PRACTITIONER: 'Reschedule requested',
+  RESCHEDULED_BY_PRACTITIONER: 'Rescheduled by practitioner',
+  COMPLETED: 'Completed',
+  NO_SHOW_CLIENT: 'No-show (client)',
+  NO_SHOW_PRACTITIONER: 'No-show (practitioner)',
+}
+
+export function v2StatusLabel(v2Status, fallbackStatus) {
+  if (!v2Status) return sessionStatusLabel(fallbackStatus)
+  return V2_STATUS_LABELS[v2Status] ?? String(v2Status).replace(/_/g, ' ').toLowerCase()
+}
+
+export function v2StatusClass(v2Status, fallbackStatus) {
+  switch (v2Status) {
+    case 'BOOKED':
+      return 'bg-sky-50 text-sky-800 ring-1 ring-sky-200/80'
+    case 'CANCELLED_BY_CLIENT':
+    case 'CANCELLED_BY_PRACTITIONER':
+      return 'bg-rose-50 text-rose-800 ring-1 ring-rose-200/80'
+    case 'RESCHEDULE_REQUESTED_BY_PRACTITIONER':
+      return 'bg-amber-50 text-amber-800 ring-1 ring-amber-200/80'
+    case 'RESCHEDULED_BY_CLIENT':
+    case 'RESCHEDULED_BY_PRACTITIONER':
+      return 'bg-indigo-50 text-indigo-800 ring-1 ring-indigo-200/80'
+    case 'COMPLETED':
+      return 'bg-teal-50 text-teal-800 ring-1 ring-teal-200/80'
+    case 'NO_SHOW_CLIENT':
+    case 'NO_SHOW_PRACTITIONER':
+      return 'bg-amber-50 text-amber-900 ring-1 ring-amber-200/80'
+    default:
+      return sessionStatusClass(fallbackStatus)
+  }
+}
+
+const CHANGE_REASON_LABELS = {
+  CLIENT_REQUESTED: 'Client asked for the change',
+  EMERGENCY: 'Emergency',
+  ILLNESS: 'Illness',
+  TECHNICAL: 'Technical problem',
+  SCHEDULING_CONFLICT: 'Scheduling conflict',
+  OTHER: 'Other',
+}
+
+export function changeReasonLabel(code) {
+  if (!code) return '—'
+  return CHANGE_REASON_LABELS[code] ?? String(code)
+}
+
+/** Colour for a practitioner's standing level: good / warning / review. */
+export function standingLevelClass(level) {
+  switch (level) {
+    case 'review':
+      return 'bg-rose-50 text-rose-800 ring-1 ring-rose-200/80'
+    case 'warning':
+      return 'bg-amber-50 text-amber-800 ring-1 ring-amber-200/80'
+    default:
+      return 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80'
+  }
+}
+
+export function standingLevelLabel(level) {
+  switch (level) {
+    case 'review':
+      return 'Needs review'
+    case 'warning':
+      return 'Warned'
+    default:
+      return 'Good standing'
+  }
+}
+
 export function clientStatusLabel(status) {
   const normalized = normalizeClientStatus(status)
   return CLIENT_STATUS_LABELS[normalized] ?? normalized.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
