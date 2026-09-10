@@ -10,7 +10,7 @@ import LoadingState from '../components/states/LoadingState'
 import ErrorState from '../components/states/ErrorState'
 import EmptyState from '../components/states/EmptyState'
 import Pagination from '../components/Pagination'
-import { formatAdminDateTime, formatCents, formatShortUuid, personName } from '../lib/display'
+import { formatAdminDateTime, formatCents, formatShortUuid, personName, roleLabel } from '../lib/display'
 import { getErrorMessage } from '../lib/errors'
 
 const TYPE_OPTIONS = [
@@ -99,16 +99,6 @@ export default function Transactions() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-[var(--figma-text-strong)] sm:text-2xl">
-          Transactions
-        </h1>
-        <p className="mt-1 text-sm text-[var(--figma-text-muted)]">
-          Chronological ledger of session payments, refunds, and payouts. Amounts are signed (payments +,
-          refunds/payouts −).
-        </p>
-      </div>
-
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {kpisError ? (
           <div className="figma-card p-5 md:col-span-3">
@@ -217,7 +207,7 @@ export default function Transactions() {
                       <div className="text-sm font-semibold text-[var(--figma-text-strong)]">
                         {personName(t.entity) || '—'}
                       </div>
-                      <div className="text-xs text-[var(--figma-text-muted)]">{t.entity?.role || ''}</div>
+                      <div className="text-xs text-[var(--figma-text-muted)]">{roleLabel(t.entity?.role, '')}</div>
                     </td>
                     <td className="px-4 py-4 font-mono text-xs text-[var(--figma-text)] sm:px-6">
                       {t.stripeId || '—'}

@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { useCallback, useMemo, useState } from 'react'
+import { Trash2 } from 'lucide-react'
 import { usePaginatedList } from '../hooks/usePaginatedList'
 import { createPromoCode, deletePromoCode, fetchPromoCodes, updatePromoCode } from '../services/promoCodes'
 import LoadingState from '../components/states/LoadingState'
@@ -9,6 +9,7 @@ import Pagination from '../components/Pagination'
 import { formatAdminDateTime, formatCents } from '../lib/display'
 import { getErrorMessage } from '../lib/errors'
 import { usePermissions } from '../hooks/usePermissions'
+import { useRegisterPageActions } from '../hooks/usePageActions'
 
 export default function PromoCodes() {
   const { canWriteSettings } = usePermissions()
@@ -50,25 +51,24 @@ export default function PromoCodes() {
     }
   }
 
+  const canWrite = canWriteSettings()
+  const topbarActions = useMemo(
+    () =>
+      canWrite
+        ? {
+            primary: {
+              label: 'New code',
+              icon: 'plus',
+              onClick: () => setCreateOpen(true),
+            },
+          }
+        : null,
+    [canWrite],
+  )
+  useRegisterPageActions(topbarActions)
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-[var(--figma-text-strong)]">Promo codes</h1>
-          <p className="text-sm text-[var(--figma-text-muted)]">Admin CRUD over platform promo codes.</p>
-        </div>
-        {canWriteSettings() ? (
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-[var(--figma-brand)] px-4 text-sm font-semibold text-white"
-          >
-            <Plus className="h-4 w-4" />
-            New code
-          </button>
-        ) : null}
-      </div>
-
       <div className="figma-card overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-[var(--figma-stroke)] bg-white px-4 py-4 sm:flex-row sm:px-6">
           <input

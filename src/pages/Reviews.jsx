@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Download, Eye, EyeOff, Flag, FlagOff } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Eye, EyeOff, Flag, FlagOff } from 'lucide-react'
 import { usePaginatedList } from '../hooks/usePaginatedList'
 import {
   exportReviewsCsv,
@@ -17,6 +17,7 @@ import Pagination from '../components/Pagination'
 import { formatAdminDateTime, personName } from '../lib/display'
 import { getErrorMessage } from '../lib/errors'
 import { usePermissions } from '../hooks/usePermissions'
+import { useRegisterPageActions } from '../hooks/usePageActions'
 
 export default function Reviews() {
   const { canFlagReviews, canHideReviews } = usePermissions()
@@ -57,7 +58,7 @@ export default function Reviews() {
     reloadKpis()
   }, [reloadKpis])
 
-  async function onExport() {
+  const onExport = useCallback(async () => {
     setExporting(true)
     try {
       const { q, rating, flaggedOnly } = list.filters
@@ -71,7 +72,21 @@ export default function Reviews() {
     } finally {
       setExporting(false)
     }
-  }
+  }, [list.filters])
+
+  const topbarActions = useMemo(
+    () => ({
+      secondary: {
+        label: exporting ? 'Exporting…' : 'Export',
+        icon: 'download',
+        variant: 'outline',
+        disabled: exporting,
+        onClick: onExport,
+      },
+    }),
+    [exporting, onExport],
+  )
+  useRegisterPageActions(topbarActions)
 
   async function runAction(id, fn) {
     setBusyId(id)
@@ -94,26 +109,6 @@ export default function Reviews() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-[var(--figma-text-strong)] sm:text-2xl">
-            Reviews
-          </h1>
-          <p className="mt-1 text-sm text-[var(--figma-text-muted)]">
-            Moderate ratings, resolve flags, and control publication visibility.
-          </p>
-        </div>
-        <button
-          type="button"
-          disabled={exporting}
-          onClick={onExport}
-          className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-[var(--figma-stroke)] bg-white px-4 text-sm font-semibold disabled:opacity-50"
-        >
-          <Download className="h-4 w-4" />
-          {exporting ? 'Exporting…' : 'Export'}
-        </button>
-      </div>
-
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Average rating" value={formatRating(kpis?.averageRating)} />
         <KpiCard label="Visible reviews" value={formatCount(kpis?.visibleReviews)} />

@@ -1,17 +1,10 @@
-import { Bell, CircleHelp, Download, Menu, Plus, RefreshCw, Search } from 'lucide-react'
+import { Bell, CircleHelp, Download, Menu, Plus, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchAdminActionUnreadCount } from '../services/notifications'
 import { useAdminLiveRefresh } from '../hooks/useAdminLiveRefresh'
 
-export default function Topbar({
-  title,
-  subtitle,
-  onOpenSidebar,
-  actions,
-  searchPlaceholder = 'SEARCH RECORDS...',
-  showSearch = true,
-}) {
+export default function Topbar({ title, subtitle, onOpenSidebar, actions }) {
   const navigate = useNavigate()
   const secondary = actions?.secondary
   const primary = actions?.primary
@@ -61,15 +54,7 @@ export default function Topbar({
             <Menu className="h-5 w-5" />
           </button>
 
-          {showSearch ? (
-            <div className="relative min-w-0 flex-1 sm:max-w-md lg:max-w-xl xl:max-w-2xl">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[var(--figma-text)]" />
-              <input
-                placeholder={searchPlaceholder}
-                className="h-[35px] w-full rounded border border-transparent bg-white pl-11 pr-4 text-[12px] font-medium tracking-wide text-[var(--figma-text)] placeholder:font-medium placeholder:tracking-wide placeholder:text-[rgba(71,69,81,0.5)] focus:outline-none focus:ring-2 focus:ring-[rgba(27,20,100,0.14)]"
-              />
-            </div>
-          ) : hasHeading ? (
+          {hasHeading ? (
             <div className="min-w-0 flex-1">
               {title ? (
                 <div className="truncate text-lg font-semibold text-[var(--figma-text-strong)] sm:text-xl">{title}</div>
@@ -82,19 +67,8 @@ export default function Topbar({
             <div className="min-w-0 flex-1" />
           )}
 
-          {/* When search is shown, put title after it on larger screens */}
-          {showSearch && hasHeading ? (
-            <div className="hidden min-w-0 flex-1 lg:block">
-              {title ? (
-                <div className="truncate text-base font-semibold text-[var(--figma-text-strong)]">{title}</div>
-              ) : null}
-              {subtitle ? (
-                <div className="mt-0.5 line-clamp-1 text-xs text-[var(--figma-text-muted)]">{subtitle}</div>
-              ) : null}
-            </div>
-          ) : null}
-
           <div className="ml-auto flex shrink-0 items-center gap-2">
+            {actions?.extra ? <div className="hidden sm:block">{actions.extra}</div> : null}
             {secondary ? (
               <button
                 type="button"
@@ -148,21 +122,9 @@ export default function Topbar({
           </div>
         </div>
 
-        {/* Mobile: title under search when search is present */}
-        {showSearch && hasHeading ? (
-          <div className="mt-3 min-w-0 lg:hidden">
-            {title ? (
-              <div className="truncate text-lg font-semibold text-[var(--figma-text-strong)]">{title}</div>
-            ) : null}
-            {subtitle ? (
-              <div className="mt-0.5 line-clamp-2 text-sm text-[var(--figma-text-muted)]">{subtitle}</div>
-            ) : null}
-          </div>
-        ) : null}
-
-        {/* Mobile action buttons */}
-        {secondary || primary ? (
-          <div className="mt-3 flex items-center gap-2 sm:hidden">
+        {secondary || primary || actions?.extra ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2 sm:hidden">
+            {actions?.extra ? <div className="w-full">{actions.extra}</div> : null}
             {secondary ? (
               <button
                 type="button"

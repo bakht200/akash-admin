@@ -21,9 +21,7 @@ const PAGE_META = [
     path: '/practitioners',
     title: 'Practitioners',
     subtitle: 'Monitor and manage all practitioners in the Akash network.',
-    actions: {
-      secondary: { label: 'Export CSV', icon: 'download' },
-    },
+    actions: null,
   },
   {
     path: '/practitioners/:id',
@@ -35,9 +33,7 @@ const PAGE_META = [
     path: '/clients',
     title: 'Clients',
     subtitle: 'Manage and monitor client engagement across the platform.',
-    actions: {
-      secondary: { label: 'Export CSV', icon: 'download' },
-    },
+    actions: null,
   },
   {
     path: '/clients/:id',
@@ -49,9 +45,7 @@ const PAGE_META = [
     path: '/sessions',
     title: 'Sessions',
     subtitle: 'Monitor and manage all practitioner-client interactions.',
-    actions: {
-      secondary: { label: 'Export CSV', icon: 'download', variant: 'outline' },
-    },
+    actions: null,
   },
   {
     path: '/sessions/:id',
@@ -67,48 +61,39 @@ const PAGE_META = [
   },
   {
     path: '/revenue',
-    title: '',
-    subtitle: '',
+    title: 'Revenue Overview',
+    subtitle: 'Platform take: commission + platform fee + service fee − platform-funded promos.',
     actions: null,
   },
   {
     path: '/transactions',
     title: 'Financial Ledger',
     subtitle: 'Individual transactions, payouts, refunds, and settlement status.',
-    actions: {
-      secondary: { label: 'Export CSV', icon: 'download', variant: 'outline' },
-    },
+    actions: null,
   },
   {
     path: '/payouts',
     title: 'Payouts',
     subtitle: 'Manage and reconcile practitioner distributions.',
-    actions: {
-      secondary: { label: 'Export CSV', icon: 'download' },
-    },
+    actions: null,
   },
   {
     path: '/wallet',
     title: 'Wallet Overview',
-    subtitle: 'Platform Stripe liquidity and balance movements.',
+    subtitle: 'Platform-level Stripe liquidity — not per-practitioner wallets.',
     actions: null,
   },
   {
     path: '/reviews',
     title: 'Review Management',
     subtitle: 'Moderate ratings, resolve flags, and enforce publication policy.',
-    actions: {
-      secondary: { label: 'Export CSV', icon: 'download' },
-    },
+    actions: null,
   },
   {
     path: '/notifications',
     title: 'Notifications',
-    subtitle: 'Review action items and monitor user-notification delivery.',
-    actions: {
-      secondary: { label: 'Export Logs', icon: 'download', variant: 'outline' },
-      primary: { label: 'Live Refresh', icon: 'refresh' },
-    },
+    subtitle: 'Work through items that need attention, or review delivery logs.',
+    actions: null,
   },
   {
     path: '/support-tickets',
@@ -122,30 +107,14 @@ const PAGE_META = [
     subtitle: 'Review and respond to a user support request.',
     actions: null,
   },
+  {
+    path: '/promo-codes',
+    title: 'Promo codes',
+    subtitle: 'Create and manage platform promo codes.',
+    actions: null,
+  },
   { path: '/settings', title: 'Settings', subtitle: 'Update your account preferences.' },
 ]
-
-const HIDE_SEARCH_PATHS = new Set(['/dashboard', '/revenue', '/wallet', '/modalities'])
-
-function getSearchPlaceholder(pathname) {
-  if (pathname === '/practitioners' || /^\/practitioners\/[^/]+$/.test(pathname)) {
-    return 'Search practitioners…'
-  }
-  if (pathname === '/sessions' || /^\/sessions\/[^/]+$/.test(pathname)) {
-    return 'Search sessions…'
-  }
-  if (pathname === '/clients' || /^\/clients\/[^/]+$/.test(pathname)) {
-    return 'Search clients…'
-  }
-  if (pathname === '/notifications') return 'Search notification records…'
-  if (pathname === '/transactions') return 'Search transactions…'
-  if (pathname === '/payouts') return 'Search payouts…'
-  if (pathname === '/reviews') return 'Search reviews…'
-  if (pathname === '/support-tickets' || pathname.startsWith('/support-tickets/')) {
-    return 'Search support tickets…'
-  }
-  return 'Search records…'
-}
 
 export default function AppShell() {
   return (
@@ -213,9 +182,6 @@ function AppShellInner() {
     }
   }, [pageActions, meta.actions, location.pathname, exportingReport, onDownloadDashboardReport])
 
-  const showSearch = !HIDE_SEARCH_PATHS.has(location.pathname)
-  const searchPlaceholder = getSearchPlaceholder(location.pathname)
-
   return (
     <div className="min-h-dvh bg-[var(--figma-app-bg)] text-[var(--figma-text)]">
       <div className="min-h-dvh w-full max-w-none p-3 sm:p-4 lg:p-6">
@@ -232,8 +198,6 @@ function AppShellInner() {
               title={meta.title}
               subtitle={meta.subtitle}
               actions={actions}
-              searchPlaceholder={searchPlaceholder}
-              showSearch={showSearch}
               onOpenSidebar={() => setMobileSidebarOpen(true)}
             />
 

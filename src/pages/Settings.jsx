@@ -1,5 +1,5 @@
 import { usePermissions } from '../hooks/usePermissions'
-import { formatAdminDateTime } from '../lib/display'
+import { formatAdminDateTime, roleLabel } from '../lib/display'
 
 export default function Settings() {
   const { user, permissions } = usePermissions()
@@ -13,7 +13,7 @@ export default function Settings() {
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <ReadOnly label="Full name" value={user?.name || '—'} />
-        <ReadOnly label="Role" value={user?.role || '—'} />
+        <ReadOnly label="Role" value={roleLabel(user?.role)} />
         <div className="sm:col-span-2">
           <ReadOnly label="Email" value={user?.email || '—'} />
         </div>

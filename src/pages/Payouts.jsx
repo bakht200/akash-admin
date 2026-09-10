@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Download, Eye, MoreVertical, RotateCcw, X } from 'lucide-react'
+import { Eye, MoreVertical, RotateCcw, X } from 'lucide-react'
 import { usePaginatedList } from '../hooks/usePaginatedList'
 import {
   exportPayoutsCsv,
@@ -17,6 +17,7 @@ import ReasonModal from '../components/modals/ReasonModal'
 import { formatAdminDateTime, formatCents, formatShortUuid, personName } from '../lib/display'
 import { getErrorMessage } from '../lib/errors'
 import { usePermissions } from '../hooks/usePermissions'
+import { useRegisterPageActions } from '../hooks/usePageActions'
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All statuses' },
@@ -80,7 +81,7 @@ export default function Payouts() {
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [])
 
-  async function onExport() {
+  const onExport = useCallback(async () => {
     setExporting(true)
     try {
       const { status, q, from, to, healerId } = list.filters
@@ -96,7 +97,20 @@ export default function Payouts() {
     } finally {
       setExporting(false)
     }
-  }
+  }, [list.filters])
+
+  const topbarActions = useMemo(
+    () => ({
+      primary: {
+        label: exporting ? 'Exporting…' : 'Download Payout Report',
+        icon: 'download',
+        disabled: exporting,
+        onClick: onExport,
+      },
+    }),
+    [exporting, onExport],
+  )
+  useRegisterPageActions(topbarActions)
 
   async function openDetail(id) {
     setMenuId(null)
@@ -137,26 +151,6 @@ export default function Payouts() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-[var(--figma-text-strong)] sm:text-2xl">
-            Payouts
-          </h1>
-          <p className="mt-1 text-sm text-[var(--figma-text-muted)]">
-            Practitioner withdrawals via Stripe Connect. Failed rows can be retried (Finance / Super Admin).
-          </p>
-        </div>
-        <button
-          type="button"
-          disabled={exporting}
-          onClick={onExport}
-          className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-[var(--figma-brand)] px-4 text-[11px] font-semibold tracking-[0.14em] text-white disabled:opacity-50"
-        >
-          <Download className="h-4 w-4" />
-          {exporting ? 'Exporting…' : 'Download Payout Report'}
-        </button>
-      </div>
-
       {actionError ? (
         <div className="rounded-[10px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
           {actionError}

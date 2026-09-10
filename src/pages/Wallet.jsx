@@ -95,16 +95,6 @@ export default function Wallet() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-[var(--figma-text-strong)] sm:text-2xl">
-          Wallet Overview
-        </h1>
-        <p className="mt-1 text-sm text-[var(--figma-text-muted)]">
-          Platform-level Stripe liquidity — not per-healer wallets. Reserved funds are a liability claim
-          against the balance, not a separate bucket.
-        </p>
-      </div>
-
       {overviewLoading ? (
         <LoadingState label="Loading wallet overview…" />
       ) : overviewError ? (

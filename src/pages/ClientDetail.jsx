@@ -12,6 +12,7 @@ import {
   formatRelativeTime,
   formatShortUuid,
   personName,
+  practitionerCopy,
 } from '../lib/display'
 import { getErrorMessage } from '../lib/errors'
 import { usePermissions } from '../hooks/usePermissions'
@@ -376,7 +377,7 @@ export default function ClientDetail() {
 }
 
 function activityLabel(evt) {
-  if (evt.label) return evt.label
+  if (evt.label) return practitionerCopy(evt.label)
   switch (evt.type) {
     case 'signup':
       return 'Signed up'

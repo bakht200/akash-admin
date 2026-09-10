@@ -10,6 +10,8 @@ import {
   formatCents,
   formatShortUuid,
   personName,
+  actorLabel,
+  practitionerCopy,
   sessionStatusLabel,
   v2StatusClass,
   v2StatusLabel,
@@ -212,8 +214,8 @@ export default function SessionDetail() {
                     <li key={`${t.type || t.label}-${idx}`} className="relative pb-6 last:pb-0">
                       <span className="absolute -left-[25px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[var(--figma-brand)]" />
                       <div className="text-sm font-semibold text-[var(--figma-text-strong)]">
-                        {t.label || eventLabel(t.type)}
-                        {t.by ? <span className="font-normal text-[var(--figma-text-muted)]"> · {t.by}</span> : null}
+                        {t.label ? practitionerCopy(t.label) : eventLabel(t.type)}
+                        {t.by ? <span className="font-normal text-[var(--figma-text-muted)]"> · {actorLabel(t.by)}</span> : null}
                       </div>
                       <div className="text-xs text-[var(--figma-text-muted)]">
                         {t.at || t.when || t.createdAt ? formatAdminDateTime(t.at || t.when || t.createdAt) : '—'}
@@ -259,7 +261,7 @@ export default function SessionDetail() {
                 </div>
                 <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <AuditRow label="Type" value={d.lastChange.type === 'cancel' ? 'Cancellation' : 'Reschedule'} />
-                  <AuditRow label="By" value={d.lastChange.by || '—'} />
+                  <AuditRow label="By" value={actorLabel(d.lastChange.by)} />
                   <AuditRow label="At" value={d.lastChange.at ? formatAdminDateTime(d.lastChange.at) : '—'} />
                   <AuditRow
                     label="Reason"
@@ -299,7 +301,7 @@ export default function SessionDetail() {
               <div className="mt-6 rounded-[12px] border border-[var(--figma-stroke)] p-4 text-sm">
                 <div className="text-[11px] font-semibold tracking-[0.14em] text-[var(--figma-text-muted)]">CANCELLATION</div>
                 <div className="mt-2 text-[var(--figma-text)]">
-                  Actor: <span className="font-semibold">{d.cancellation.actor || d.cancellation.by || '—'}</span>
+                  Actor: <span className="font-semibold">{actorLabel(d.cancellation.actor || d.cancellation.by)}</span>
                   {d.cancellation.reason ? ` · ${d.cancellation.reason}` : ''}
                 </div>
               </div>
@@ -317,7 +319,7 @@ export default function SessionDetail() {
               </div>
               {(healerFin.breakdown || []).map((row, idx) => (
                 <div key={idx} className="flex justify-between gap-2 border-b border-white/15 pb-2">
-                  <span className="text-white/80">{row.label || row.key}</span>
+                  <span className="text-white/80">{practitionerCopy(row.label || row.key)}</span>
                   <span className="font-semibold">{formatCents(row.amountCents ?? row.cents)}</span>
                 </div>
               ))}
@@ -394,7 +396,7 @@ const EVENT_LABELS = {
 
 function eventLabel(type) {
   if (!type) return 'Event'
-  return EVENT_LABELS[type] ?? String(type).replace(/_/g, ' ').replace(/\b\w/, (c) => c.toUpperCase())
+  return EVENT_LABELS[type] ?? practitionerCopy(String(type).replace(/_/g, ' ')).replace(/\b\w/, (c) => c.toUpperCase())
 }
 
 function PersonCard({ label, person, onView }) {

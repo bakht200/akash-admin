@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Download, LifeBuoy, RotateCcw, UserCheck } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { LifeBuoy, RotateCcw, UserCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { usePaginatedList } from '../hooks/usePaginatedList'
 import {
@@ -14,10 +14,11 @@ import LoadingState from '../components/states/LoadingState'
 import ErrorState from '../components/states/ErrorState'
 import EmptyState from '../components/states/EmptyState'
 import Pagination from '../components/Pagination'
-import { formatAdminDateTime } from '../lib/display'
+import { formatAdminDateTime, practitionerCopy } from '../lib/display'
 import { getErrorMessage } from '../lib/errors'
 import { usePermissions } from '../hooks/usePermissions'
 import { useAdminLiveRefresh } from '../hooks/useAdminLiveRefresh'
+import { useRegisterPageActions } from '../hooks/usePageActions'
 
 const CHANNEL_OPTIONS = [
   { value: 'all', label: 'All channels' },
@@ -43,6 +44,8 @@ export default function Notifications() {
   const [actionItems, setActionItems] = useState([])
   const [actionUnreadCount, setActionUnreadCount] = useState(0)
   const [actionLoading, setActionLoading] = useState(true)
+  const [tab, setTab] = useState('log')
+  const [tabReady, setTabReady] = useState(false)
 
   const fetcher = useCallback((params) => fetchNotificationLogs(params), [])
   const list = usePaginatedList(fetcher, {
@@ -90,6 +93,12 @@ export default function Notifications() {
     reloadActionItems()
   }, [reloadActionItems])
 
+  useEffect(() => {
+    if (actionLoading || tabReady) return
+    setTab(actionUnreadCount > 0 ? 'inbox' : 'log')
+    setTabReady(true)
+  }, [actionLoading, actionUnreadCount, tabReady])
+
   async function openActionItem(item) {
     if (!item.isRead) {
       try {
@@ -111,7 +120,7 @@ export default function Notifications() {
     navigate(item.targetUrl)
   }
 
-  async function onExport() {
+  const onExport = useCallback(async () => {
     setExporting(true)
     try {
       const { channel, horizon, q } = list.filters
@@ -125,7 +134,21 @@ export default function Notifications() {
     } finally {
       setExporting(false)
     }
-  }
+  }, [list.filters])
+
+  const topbarActions = useMemo(
+    () => ({
+      secondary: {
+        label: exporting ? 'Exporting…' : 'Export Logs',
+        icon: 'download',
+        variant: 'outline',
+        disabled: exporting,
+        onClick: onExport,
+      },
+    }),
+    [exporting, onExport],
+  )
+  useRegisterPageActions(topbarActions)
 
   async function onRetry(row) {
     setBusyKey(row.rowKey ?? row.id)
@@ -141,51 +164,53 @@ export default function Notifications() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-[var(--figma-text-strong)] sm:text-2xl">
-            Notifications
-          </h1>
-          <p className="mt-1 text-sm text-[var(--figma-text-muted)]">
-            Action items for the admin team, followed by user-notification delivery logs.
-          </p>
-        </div>
-        <button
-          type="button"
-          disabled={exporting}
-          onClick={onExport}
-          className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-[var(--figma-stroke)] bg-white px-4 text-sm font-semibold disabled:opacity-50"
-        >
-          <Download className="h-4 w-4" />
-          {exporting ? 'Exporting…' : 'Export Logs'}
-        </button>
-      </div>
-
       {liveHint ? (
         <div className="rounded-[10px] border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-800">
           Live update received — refreshing…
         </div>
       ) : null}
 
-      <section className="figma-card overflow-hidden">
-        <div className="flex items-center justify-between border-b border-[var(--figma-stroke)] px-4 py-4 sm:px-6">
-          <div>
-            <h2 className="font-semibold text-[var(--figma-text-strong)]">Action required</h2>
-            <p className="mt-1 text-xs text-[var(--figma-text-muted)]">
-              Support requests and practitioner identity reviews awaiting attention.
-            </p>
-          </div>
-          {actionUnreadCount > 0 ? (
-            <span className="rounded-full bg-rose-100 px-2.5 py-1 text-xs font-semibold text-rose-700">
-              {actionUnreadCount} unread
-            </span>
-          ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="inline-flex rounded-[12px] bg-[var(--figma-input-bg)] p-1">
+          <button
+            type="button"
+            onClick={() => setTab('inbox')}
+            className={[
+              'inline-flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm font-semibold',
+              tab === 'inbox' ? 'bg-white text-[var(--figma-text-strong)] shadow-sm' : 'text-[var(--figma-text-muted)]',
+            ].join(' ')}
+          >
+            Needs attention
+            {actionUnreadCount > 0 ? (
+              <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">
+                {actionUnreadCount}
+              </span>
+            ) : null}
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('log')}
+            className={[
+              'rounded-[10px] px-3 py-2 text-sm font-semibold',
+              tab === 'log' ? 'bg-white text-[var(--figma-text-strong)] shadow-sm' : 'text-[var(--figma-text-muted)]',
+            ].join(' ')}
+          >
+            Delivery log
+          </button>
         </div>
+        {tab === 'inbox' ? (
+          <p className="text-xs text-[var(--figma-text-muted)]">
+            Support requests and identity reviews waiting for an admin.
+          </p>
+        ) : null}
+      </div>
 
+      {tab === 'inbox' ? (
+      <section className="figma-card overflow-hidden">
         {actionLoading ? (
           <LoadingState label="Loading action notifications…" />
         ) : actionItems.length === 0 ? (
-          <EmptyState title="No action notifications" />
+          <EmptyState title="You are caught up" description="New support tickets and identity reviews will appear here." />
         ) : (
           <div className="divide-y divide-[var(--figma-stroke)]">
             {actionItems.map((item) => {
@@ -208,11 +233,11 @@ export default function Notifications() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
-                      <span className="font-semibold text-[var(--figma-text-strong)]">{item.title}</span>
+                      <span className="font-semibold text-[var(--figma-text-strong)]">{practitionerCopy(item.title)}</span>
                       {!item.isRead ? <span className="h-2 w-2 rounded-full bg-rose-600" aria-label="Unread" /> : null}
                     </span>
                     {item.body ? (
-                      <span className="mt-1 block text-sm text-[var(--figma-text-muted)]">{item.body}</span>
+                      <span className="mt-1 block text-sm text-[var(--figma-text-muted)]">{practitionerCopy(item.body)}</span>
                     ) : null}
                     <span className="mt-1 block text-xs text-[var(--figma-text-muted)]">
                       {formatAdminDateTime(item.createdAt)}
@@ -224,7 +249,8 @@ export default function Notifications() {
           </div>
         )}
       </section>
-
+      ) : (
+      <>
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Total sent" value={formatCount(kpis?.totalSent)} />
         <KpiCard label="Delivered" value={formatCount(kpis?.delivered)} />
@@ -357,6 +383,8 @@ export default function Notifications() {
           label="deliveries"
         />
       </section>
+      </>
+      )}
     </div>
   )
 }
@@ -404,9 +432,7 @@ function KpiCard({ label, value, hint }) {
 
 function formatEvent(event) {
   if (!event) return '—'
-  return String(event)
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+  return practitionerCopy(String(event).replace(/_/g, ' ')).replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 function formatCount(value) {

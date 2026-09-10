@@ -3,7 +3,7 @@ import { ArrowLeft, ExternalLink, Send } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ErrorState from '../components/states/ErrorState'
 import LoadingState from '../components/states/LoadingState'
-import { formatAdminDateTime } from '../lib/display'
+import { formatAdminDateTime, roleLabel } from '../lib/display'
 import { getSupportTicketNumber } from '../lib/supportTicket'
 import { getErrorMessage } from '../lib/errors'
 import { fetchSupportTicket, sendSupportReply } from '../services/support'
@@ -98,12 +98,12 @@ export default function SupportTicketDetail() {
             ) : null}
             <h1 className="text-xl font-semibold text-[var(--figma-text-strong)]">{ticket.subject}</h1>
             <p className="mt-1 text-sm text-[var(--figma-text-muted)]">
-              {submitterName} · {ticket.user?.role || 'user'} · {formatAdminDateTime(ticket.createdAt)}
+              {submitterName} · {roleLabel(ticket.user?.role, 'User')} · {formatAdminDateTime(ticket.createdAt)}
             </p>
             {ticket.user?.email ? (
               <p className="mt-1 text-xs text-[var(--figma-text-muted)]">{ticket.user.email}</p>
             ) : null}
-            {ticket.userId && ticket.user?.role === 'healer' ? (
+            {ticket.userId && (ticket.user?.role === 'healer' || ticket.user?.role === 'practitioner') ? (
               <Link
                 to={`/practitioners/${ticket.userId}#identity-verification`}
                 className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-[var(--figma-brand)]"

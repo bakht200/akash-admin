@@ -7,7 +7,7 @@ import LoadingState from '../components/states/LoadingState'
 import ErrorState from '../components/states/ErrorState'
 import EmptyState from '../components/states/EmptyState'
 import Pagination from '../components/Pagination'
-import { formatAdminDateTime, personName } from '../lib/display'
+import { formatAdminDateTime, personName, roleLabel } from '../lib/display'
 import { getSupportTicketNumber } from '../lib/supportTicket'
 import { getErrorMessage } from '../lib/errors'
 
@@ -115,8 +115,8 @@ export default function SupportTickets() {
                     >
                       <td className="px-4 py-4 sm:px-6">
                         <div className="text-sm font-semibold text-[var(--figma-text-strong)]">{name}</div>
-                        <div className="text-xs capitalize text-[var(--figma-text-muted)]">
-                          {ticket.user?.role || 'user'}
+                        <div className="text-xs text-[var(--figma-text-muted)]">
+                          {roleLabel(ticket.user?.role, 'User')}
                           {ticket.source === 'identity_verification' ? ' · Identity' : ''}
                         </div>
                       </td>

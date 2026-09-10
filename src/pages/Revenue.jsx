@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Download } from 'lucide-react'
 import LoadingState from '../components/states/LoadingState'
 import ErrorState from '../components/states/ErrorState'
 import { fetchRevenueDailySeries, fetchRevenueSummary } from '../services/financials'
 import { formatAdminDateTime, formatCents } from '../lib/display'
 import { getErrorMessage } from '../lib/errors'
+import { useRegisterPageActions } from '../hooks/usePageActions'
 
 const RANGE_OPTIONS = [
   { value: 7, label: 'Last 7 Days' },
@@ -59,6 +59,33 @@ export default function Revenue() {
 
   const ledgerRows = useMemo(() => [...series].reverse().slice(0, 14), [series])
 
+  const topbarActions = useMemo(
+    () => ({
+      extra: (
+        <select
+          value={range}
+          onChange={(e) => setRange(Number(e.target.value))}
+          aria-label="Date range"
+          className="h-10 w-full rounded-[8px] border border-[var(--figma-stroke)] bg-white px-3 text-sm font-medium text-[var(--figma-text-strong)] sm:w-[180px]"
+        >
+          {RANGE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      ),
+      primary: {
+        label: 'Download Report',
+        icon: 'download',
+        disabled: !series.length,
+        onClick: () => downloadSeriesCsv(series, summary?.range),
+      },
+    }),
+    [range, series, summary?.range],
+  )
+  useRegisterPageActions(topbarActions)
+
   if (loading && !summary) return <LoadingState label="Loading revenue…" />
   if (error && !summary) {
     return <ErrorState message={getErrorMessage(error, 'Could not load revenue.')} onRetry={() => load(range)} />
@@ -82,47 +109,11 @@ export default function Revenue() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-[var(--figma-text-strong)] sm:text-2xl">
-            Revenue Overview
-          </h1>
-          <p className="mt-1 text-sm text-[var(--figma-text-muted)]">
-            Platform take: commission + platform fee + service fee − platform-funded promos.
-            {summary?.range ? (
-              <>
-                {' '}
-                {summary.range.from} → {summary.range.to} ({summary.range.days}d)
-              </>
-            ) : null}
-          </p>
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-end">
-          <label className="flex flex-col gap-1 text-[10px] font-semibold tracking-[0.12em] text-[var(--figma-text-muted)] sm:min-w-[160px]">
-            DATE RANGE
-            <select
-              value={range}
-              onChange={(e) => setRange(Number(e.target.value))}
-              className="h-10 rounded-[10px] border border-[var(--figma-stroke)] bg-white px-3 text-sm font-medium text-[var(--figma-text-strong)] focus:outline-none focus:ring-2 focus:ring-[rgba(27,20,100,0.12)]"
-            >
-              {RANGE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            onClick={() => downloadSeriesCsv(series, summary?.range)}
-            disabled={!series.length}
-            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-[10px] bg-[var(--figma-brand)] px-4 text-[11px] font-semibold tracking-[0.14em] text-white disabled:opacity-50"
-          >
-            <Download className="h-4 w-4" />
-            Download Report
-          </button>
-        </div>
-      </div>
+      {summary?.range ? (
+        <p className="text-sm text-[var(--figma-text-muted)]">
+          {summary.range.from} → {summary.range.to} ({summary.range.days}d)
+        </p>
+      ) : null}
 
       {loading ? <p className="text-sm text-[var(--figma-text-muted)]">Refreshing…</p> : null}
       {error && summary ? (

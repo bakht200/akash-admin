@@ -258,6 +258,45 @@ export function personName(person) {
   return n || person.email || '—'
 }
 
+const ROLE_LABELS = {
+  healer: 'Practitioner',
+  practitioner: 'Practitioner',
+  client: 'Client',
+  user: 'User',
+  admin: 'Admin',
+  super_admin: 'Super Admin',
+}
+
+function copyCase(sample, replacement) {
+  if (sample && sample === sample.toUpperCase()) return replacement.toUpperCase()
+  if (sample?.[0] && sample[0] === sample[0].toUpperCase()) {
+    return replacement[0].toUpperCase() + replacement.slice(1)
+  }
+  return replacement
+}
+
+/** Rewrite API "healer" wording so the admin UI always says practitioner. */
+export function practitionerCopy(value) {
+  if (value == null) return value
+  return String(value)
+    .replace(/healers/gi, (match) => copyCase(match, 'practitioners'))
+    .replace(/healer/gi, (match) => copyCase(match, 'practitioner'))
+}
+
+export function roleLabel(role, fallback = '—') {
+  if (role == null || String(role).trim() === '') return fallback
+  const key = String(role).trim().toLowerCase().replace(/[\s-]+/g, '_')
+  if (ROLE_LABELS[key]) return ROLE_LABELS[key]
+  return practitionerCopy(String(role).replace(/_/g, ' ')).replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+export function actorLabel(value, fallback = '—') {
+  if (value == null || String(value).trim() === '') return fallback
+  const key = String(value).trim().toLowerCase().replace(/[\s-]+/g, '_')
+  if (ROLE_LABELS[key]) return ROLE_LABELS[key]
+  return practitionerCopy(value)
+}
+
 export const SESSION_STATUS_OPTIONS = [
   'pending',
   'confirmed',
