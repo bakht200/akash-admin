@@ -26,9 +26,11 @@ export function useAdminLiveRefresh(onNotification, { enabled = true } = {}) {
     }
 
     socket.on('admin:notification', onEvent)
+    socket.on('admin:action-notification', onEvent)
 
     return () => {
       socket.off('admin:notification', onEvent)
+      socket.off('admin:action-notification', onEvent)
       socket.disconnect()
     }
   }, [enabled])

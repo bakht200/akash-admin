@@ -103,12 +103,18 @@ const PAGE_META = [
   },
   {
     path: '/notifications',
-    title: 'Notification Logs',
-    subtitle: 'Monitor Email and Push delivery for all user activities.',
+    title: 'Notifications',
+    subtitle: 'Review action items and monitor user-notification delivery.',
     actions: {
       secondary: { label: 'Export Logs', icon: 'download', variant: 'outline' },
       primary: { label: 'Live Refresh', icon: 'refresh' },
     },
+  },
+  {
+    path: '/support-tickets/:id',
+    title: 'Support Ticket',
+    subtitle: 'Review and respond to a user support request.',
+    actions: null,
   },
   { path: '/settings', title: 'Settings', subtitle: 'Update your account preferences.' },
 ]
@@ -161,6 +167,10 @@ function AppShellInner() {
 
     if (pathname.startsWith('/practitioners/')) {
       return PAGE_META.find((m) => m.path === '/practitioners/:id') ?? { title: 'Akash Admin', subtitle: '' }
+    }
+
+    if (pathname.startsWith('/support-tickets/')) {
+      return PAGE_META.find((m) => m.path === '/support-tickets/:id') ?? { title: 'Support Ticket', subtitle: '' }
     }
 
     return { title: 'Akash Admin', subtitle: '' }

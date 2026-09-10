@@ -97,6 +97,19 @@ export default function PractitionerDetail() {
     load()
   }, [load])
 
+  // The identity-review notification links to this anchor. The panel is not in
+  // the DOM until the async profile load completes, so browser-native hash
+  // scrolling fires too early unless we repeat it here.
+  useEffect(() => {
+    if (!data || window.location.hash !== '#identity-verification') return
+    window.requestAnimationFrame(() => {
+      document.getElementById('identity-verification')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    })
+  }, [data])
+
   const identity = data?.identityVerification
   const expiresAt = identity?.documentUrlsExpireAt
 
@@ -394,15 +407,17 @@ export default function PractitionerDetail() {
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="space-y-6 lg:col-span-8">
-          <IdentityVerificationPanel
-            identity={identity}
-            refreshing={refreshing}
-            onRefresh={() => load({ silent: true })}
-            canWrite={canWritePractitioners()}
-            busy={busy}
-            onApprove={onApproveIdentity}
-            onReject={() => setIdentityRejectOpen(true)}
-          />
+          <div id="identity-verification" className="scroll-mt-28">
+            <IdentityVerificationPanel
+              identity={identity}
+              refreshing={refreshing}
+              onRefresh={() => load({ silent: true })}
+              canWrite={canWritePractitioners()}
+              busy={busy}
+              onApprove={onApproveIdentity}
+              onReject={() => setIdentityRejectOpen(true)}
+            />
+          </div>
 
           <div className="figma-card p-5 sm:p-6">
             <div className="text-sm font-semibold text-[var(--figma-text-strong)]">Professional Biography</div>
@@ -693,7 +708,7 @@ function ModalityPills({ items, className = '' }) {
         return (
           <span
             key={key}
-            className="inline-flex items-center rounded-full bg-[var(--figma-brand)]/10 px-3 py-1 text-[11px] font-semibold text-[var(--figma-brand)]"
+            className="inline-flex max-w-full items-center whitespace-normal break-words rounded-full bg-[var(--figma-brand)]/10 px-3 py-1 text-[11px] font-semibold text-[var(--figma-brand)]"
           >
             {label}
           </span>

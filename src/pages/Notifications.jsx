@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Download, RotateCcw } from 'lucide-react'
+import { Download, LifeBuoy, RotateCcw, UserCheck } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { usePaginatedList } from '../hooks/usePaginatedList'
 import {
   exportNotificationsCsv,
+  fetchAdminActionNotifications,
   fetchNotificationKpis,
   fetchNotificationLogs,
+  markAdminActionNotificationRead,
   retryNotification,
 } from '../services/notifications'
 import LoadingState from '../components/states/LoadingState'
@@ -30,12 +33,16 @@ const HORIZON_OPTIONS = [
 ]
 
 export default function Notifications() {
+  const navigate = useNavigate()
   const { canWriteNotifications } = usePermissions()
   const [qInput, setQInput] = useState('')
   const [kpis, setKpis] = useState(null)
   const [exporting, setExporting] = useState(false)
   const [busyKey, setBusyKey] = useState(null)
   const [liveHint, setLiveHint] = useState(false)
+  const [actionItems, setActionItems] = useState([])
+  const [actionUnreadCount, setActionUnreadCount] = useState(0)
+  const [actionLoading, setActionLoading] = useState(true)
 
   const fetcher = useCallback((params) => fetchNotificationLogs(params), [])
   const list = usePaginatedList(fetcher, {
@@ -51,10 +58,21 @@ export default function Notifications() {
     }
   }, [list.filters.horizon])
 
+  const reloadActionItems = useCallback(async () => {
+    try {
+      const result = await fetchAdminActionNotifications({ limit: 50 })
+      setActionItems(result?.items ?? [])
+      setActionUnreadCount(result?.unreadCount ?? 0)
+    } finally {
+      setActionLoading(false)
+    }
+  }, [])
+
   useAdminLiveRefresh(() => {
     setLiveHint(true)
     list.reload()
     reloadKpis()
+    reloadActionItems()
     window.setTimeout(() => setLiveHint(false), 2500)
   })
 
@@ -67,6 +85,31 @@ export default function Notifications() {
   useEffect(() => {
     reloadKpis()
   }, [reloadKpis])
+
+  useEffect(() => {
+    reloadActionItems()
+  }, [reloadActionItems])
+
+  async function openActionItem(item) {
+    if (!item.isRead) {
+      try {
+        await markAdminActionNotificationRead(item.id)
+        setActionItems((current) =>
+          current.map((entry) =>
+            entry.id === item.id
+              ? { ...entry, isRead: true, readAt: new Date().toISOString() }
+              : entry,
+          ),
+        )
+        setActionUnreadCount((count) => Math.max(0, count - 1))
+        window.dispatchEvent(new Event('admin-action-notification-read'))
+      } catch (err) {
+        window.alert(getErrorMessage(err, 'Could not mark notification as read.'))
+        return
+      }
+    }
+    navigate(item.targetUrl)
+  }
 
   async function onExport() {
     setExporting(true)
@@ -104,7 +147,7 @@ export default function Notifications() {
             Notifications
           </h1>
           <p className="mt-1 text-sm text-[var(--figma-text-muted)]">
-            In-app, push, and email delivery logs across all user activity.
+            Action items for the admin team, followed by user-notification delivery logs.
           </p>
         </div>
         <button
@@ -123,6 +166,61 @@ export default function Notifications() {
           Live update received — refreshing…
         </div>
       ) : null}
+
+      <section className="figma-card overflow-hidden">
+        <div className="flex items-center justify-between border-b border-[var(--figma-stroke)] px-4 py-4 sm:px-6">
+          <div>
+            <h2 className="font-semibold text-[var(--figma-text-strong)]">Action required</h2>
+            <p className="mt-1 text-xs text-[var(--figma-text-muted)]">
+              Support requests and practitioner identity reviews awaiting attention.
+            </p>
+          </div>
+          {actionUnreadCount > 0 ? (
+            <span className="rounded-full bg-rose-100 px-2.5 py-1 text-xs font-semibold text-rose-700">
+              {actionUnreadCount} unread
+            </span>
+          ) : null}
+        </div>
+
+        {actionLoading ? (
+          <LoadingState label="Loading action notifications…" />
+        ) : actionItems.length === 0 ? (
+          <EmptyState title="No action notifications" />
+        ) : (
+          <div className="divide-y divide-[var(--figma-stroke)]">
+            {actionItems.map((item) => {
+              const Icon = item.type === 'support_ticket_submitted' ? LifeBuoy : UserCheck
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => openActionItem(item)}
+                  className={[
+                    'flex w-full items-start gap-3 px-4 py-4 text-left transition hover:bg-[rgba(244,243,241,0.65)] sm:px-6',
+                    item.isRead ? 'bg-white' : 'bg-violet-50/60',
+                  ].join(' ')}
+                >
+                  <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-[var(--figma-brand)] ring-1 ring-[var(--figma-stroke)]">
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="font-semibold text-[var(--figma-text-strong)]">{item.title}</span>
+                      {!item.isRead ? <span className="h-2 w-2 rounded-full bg-rose-600" aria-label="Unread" /> : null}
+                    </span>
+                    {item.body ? (
+                      <span className="mt-1 block text-sm text-[var(--figma-text-muted)]">{item.body}</span>
+                    ) : null}
+                    <span className="mt-1 block text-xs text-[var(--figma-text-muted)]">
+                      {formatAdminDateTime(item.createdAt)}
+                    </span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </section>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Total sent" value={formatCount(kpis?.totalSent)} />

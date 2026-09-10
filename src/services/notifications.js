@@ -16,3 +16,18 @@ export async function exportNotificationsCsv(params) {
 export async function retryNotification(type, id) {
   return apiPost(`/admin/notifications/${type}/${id}/retry`)
 }
+
+export async function fetchAdminActionNotifications(params = {}) {
+  const response = await apiGet('/admin/notifications/action-items', params)
+  return response?.data ?? response
+}
+
+export async function fetchAdminActionUnreadCount() {
+  const response = await apiGet('/admin/notifications/action-items/unread-count')
+  return response?.data?.unreadCount ?? response?.unreadCount ?? 0
+}
+
+export async function markAdminActionNotificationRead(id) {
+  const response = await apiPost(`/admin/notifications/action-items/${id}/read`)
+  return response?.data ?? response
+}

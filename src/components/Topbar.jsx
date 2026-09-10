@@ -1,5 +1,8 @@
 import { Bell, CircleHelp, Download, Menu, Plus, RefreshCw, Search } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { fetchAdminActionUnreadCount } from '../services/notifications'
+import { useAdminLiveRefresh } from '../hooks/useAdminLiveRefresh'
 
 export default function Topbar({
   title,
@@ -13,6 +16,37 @@ export default function Topbar({
   const secondary = actions?.secondary
   const primary = actions?.primary
   const hasHeading = Boolean(title) || Boolean(subtitle)
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  const loadUnreadCount = useCallback(async () => {
+    try {
+      setUnreadCount(await fetchAdminActionUnreadCount())
+    } catch {
+      // The bell remains usable even for roles without notification access.
+      setUnreadCount(0)
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    fetchAdminActionUnreadCount()
+      .then((count) => {
+        if (!cancelled) setUnreadCount(count)
+      })
+      .catch(() => {
+        if (!cancelled) setUnreadCount(0)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener('admin-action-notification-read', loadUnreadCount)
+    return () => window.removeEventListener('admin-action-notification-read', loadUnreadCount)
+  }, [loadUnreadCount])
+
+  useAdminLiveRefresh(loadUnreadCount)
 
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--figma-stroke)] bg-white/90 backdrop-blur">
@@ -93,11 +127,16 @@ export default function Topbar({
 
             <button
               type="button"
-              className="grid h-10 w-10 place-items-center rounded-[10px] border border-[var(--figma-stroke)] bg-white text-[var(--figma-text)] hover:bg-[rgba(244,243,241,0.7)]"
-              aria-label="Notifications"
+              className="relative grid h-10 w-10 place-items-center rounded-[10px] border border-[var(--figma-stroke)] bg-white text-[var(--figma-text)] hover:bg-[rgba(244,243,241,0.7)]"
+              aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : 'Notifications'}
               onClick={() => navigate('/notifications')}
             >
               <Bell className="h-5 w-5" />
+              {unreadCount > 0 ? (
+                <span className="absolute -right-1.5 -top-1.5 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold leading-none text-white">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              ) : null}
             </button>
             <button
               type="button"
