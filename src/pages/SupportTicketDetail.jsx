@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import ErrorState from '../components/states/ErrorState'
 import LoadingState from '../components/states/LoadingState'
 import { formatAdminDateTime } from '../lib/display'
+import { getSupportTicketNumber } from '../lib/supportTicket'
 import { getErrorMessage } from '../lib/errors'
 import { fetchSupportTicket, sendSupportReply } from '../services/support'
 import { reviewIdentityVerification } from '../services/practitioners'
@@ -90,6 +91,11 @@ export default function SupportTicketDetail() {
       <section className="figma-card p-5 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
+            {getSupportTicketNumber(ticket) ? (
+              <p className="text-xs font-semibold tracking-wide text-[var(--figma-text-muted)]">
+                Ticket {getSupportTicketNumber(ticket)}
+              </p>
+            ) : null}
             <h1 className="text-xl font-semibold text-[var(--figma-text-strong)]">{ticket.subject}</h1>
             <p className="mt-1 text-sm text-[var(--figma-text-muted)]">
               {submitterName} · {ticket.user?.role || 'user'} · {formatAdminDateTime(ticket.createdAt)}

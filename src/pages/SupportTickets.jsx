@@ -8,6 +8,7 @@ import ErrorState from '../components/states/ErrorState'
 import EmptyState from '../components/states/EmptyState'
 import Pagination from '../components/Pagination'
 import { formatAdminDateTime, personName } from '../lib/display'
+import { getSupportTicketNumber } from '../lib/supportTicket'
 import { getErrorMessage } from '../lib/errors'
 
 const STATUS_OPTIONS = [
@@ -121,7 +122,10 @@ export default function SupportTickets() {
                       </td>
                       <td className="px-4 py-4 sm:px-6">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-[var(--figma-text-strong)]">{ticket.subject}</span>
+                          <span className="text-sm font-medium text-[var(--figma-text-strong)]">
+                            {getSupportTicketNumber(ticket) ? `${getSupportTicketNumber(ticket)} · ` : ''}
+                            {ticket.subject}
+                          </span>
                           {ticket.hasAttachment ? (
                             <Paperclip className="h-3.5 w-3.5 shrink-0 text-[var(--figma-text-muted)]" />
                           ) : null}
