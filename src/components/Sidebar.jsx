@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   Bell,
   CalendarDays,
+  LifeBuoy,
   CircleDollarSign,
   CreditCard,
   HandCoins,
@@ -33,6 +34,7 @@ const nav = [
   { to: '/payouts', label: 'Payouts', icon: HandCoins, permission: 'financials:read' },
   { to: '/wallet', label: 'Wallet', icon: Wallet, permission: 'financials:read' },
   { to: '/reviews', label: 'Reviews', icon: Star, permission: 'reviews:read' },
+  { to: '/support-tickets', label: 'Support', icon: LifeBuoy, permission: 'notifications:read' },
   { to: '/notifications', label: 'Notifications', icon: Bell, permission: 'notifications:read' },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]

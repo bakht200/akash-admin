@@ -189,7 +189,10 @@ export default function Notifications() {
         ) : (
           <div className="divide-y divide-[var(--figma-stroke)]">
             {actionItems.map((item) => {
-              const Icon = item.type === 'support_ticket_submitted' ? LifeBuoy : UserCheck
+              const Icon =
+                item.type === 'support_ticket_submitted' || item.type === 'support_ticket_replied'
+                  ? LifeBuoy
+                  : UserCheck
               return (
                 <button
                   key={item.id}
