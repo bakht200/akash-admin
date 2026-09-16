@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { usePermissions } from '../hooks/usePermissions'
 import { formatAdminDateTime, roleLabel } from '../lib/display'
 
@@ -5,7 +6,8 @@ export default function Settings() {
   const { user, permissions } = usePermissions()
 
   return (
-    <div className="max-w-2xl rounded-2xl border border-[var(--figma-stroke)] bg-white p-5 shadow-sm sm:p-6">
+    <div className="max-w-2xl space-y-4">
+    <div className="rounded-2xl border border-[var(--figma-stroke)] bg-white p-5 shadow-sm sm:p-6">
       <div className="text-sm font-semibold text-[var(--figma-text-strong)]">Account Settings</div>
       <div className="mt-1 text-xs text-[var(--figma-text-muted)]">
         Profile is managed via Google / Firebase admin auth. Role and permissions come from the server.
@@ -36,6 +38,16 @@ export default function Settings() {
           </div>
         ) : null}
       </div>
+    </div>
+    <div className="rounded-2xl border border-[var(--figma-stroke)] bg-white p-5 shadow-sm sm:p-6">
+      <div className="text-sm font-semibold text-[var(--figma-text-strong)]">Practitioner message templates</div>
+      <p className="mt-1 text-xs text-[var(--figma-text-muted)]">
+        Edit outreach copy used in the message composer without a deploy.
+      </p>
+      <Link to="/support-tickets/templates" className="mt-3 inline-flex text-sm font-semibold text-[var(--figma-brand)]">
+        Manage templates
+      </Link>
+    </div>
     </div>
   )
 }

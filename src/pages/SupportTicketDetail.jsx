@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, ExternalLink, Send } from 'lucide-react'
+import { ArrowLeft, ExternalLink } from 'lucide-react'
+import MessageComposer from '../components/MessageComposer'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ErrorState from '../components/states/ErrorState'
 import LoadingState from '../components/states/LoadingState'
 import { formatAdminDateTime, roleLabel } from '../lib/display'
 import { getSupportTicketNumber } from '../lib/supportTicket'
 import { getErrorMessage } from '../lib/errors'
-import { fetchSupportTicket, sendSupportReply } from '../services/support'
+import { fetchSupportTicket, sendSupportReply, uploadSupportAttachment } from '../services/support'
 import { reviewIdentityVerification } from '../services/practitioners'
 import { usePermissions } from '../hooks/usePermissions'
 
@@ -18,6 +19,8 @@ export default function SupportTicketDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [reply, setReply] = useState('')
+  const [replySubject, setReplySubject] = useState('')
+  const [replyFile, setReplyFile] = useState(null)
   const [sending, setSending] = useState(false)
   const [approving, setApproving] = useState(false)
 
@@ -37,13 +40,19 @@ export default function SupportTicketDetail() {
   }, [load])
 
   async function submitReply(event) {
-    event.preventDefault()
+    event?.preventDefault?.()
     const message = reply.trim()
-    if (!message || sending) return
+    if ((!message && !replyFile) || sending) return
     setSending(true)
     try {
-      await sendSupportReply(id, message)
+      let attachmentUrl
+      if (replyFile) {
+        attachmentUrl = await uploadSupportAttachment(replyFile, ticket?.userId)
+      }
+      await sendSupportReply(id, { message, attachmentUrl })
       setReply('')
+      setReplySubject('')
+      setReplyFile(null)
       await load()
     } catch (err) {
       window.alert(getErrorMessage(err, 'Could not send support reply.'))
@@ -118,12 +127,6 @@ export default function SupportTicketDetail() {
           </span>
         </div>
 
-        {ticket.attachmentUrl ? (
-          <div className="mt-5">
-            <AttachmentCard url={ticket.attachmentUrl} />
-          </div>
-        ) : null}
-
         {ticket.source === 'identity_verification' && ticket.identityVerification ? (
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-[var(--figma-stroke)] bg-[var(--figma-input-bg)] px-3 py-3">
             <p className="text-sm text-[var(--figma-text)]">
@@ -153,6 +156,7 @@ export default function SupportTicketDetail() {
             body={ticket.message}
             time={ticket.createdAt}
             admin={Boolean(ticket.openedByAdmin)}
+            attachmentUrl={ticket.attachmentUrl}
           />
           {(ticket.replies || []).map((item) => (
             <Message
@@ -166,32 +170,30 @@ export default function SupportTicketDetail() {
         </div>
 
         {canWriteNotifications() ? (
-          <form onSubmit={submitReply} className="mt-6 border-t border-[var(--figma-stroke)] pt-5">
-            <label htmlFor="support-reply" className="text-sm font-semibold text-[var(--figma-text-strong)]">
-              Reply
-            </label>
-            <textarea
-              id="support-reply"
-              value={reply}
-              onChange={(event) => setReply(event.target.value)}
-              maxLength={5000}
-              rows={4}
-              placeholder={
+          <div className="mt-6 border-t border-[var(--figma-stroke)] pt-5">
+            <MessageComposer
+              firstName={ticket.user?.firstName}
+              showSubject
+              requireSubject={false}
+              requireBody={false}
+              subject={replySubject}
+              body={reply}
+              onSubjectChange={setReplySubject}
+              onBodyChange={setReply}
+              onSubmit={submitReply}
+              submitting={sending}
+              submitLabel="Send reply"
+              canManageTemplates
+              allowAttachments
+              attachmentFile={replyFile}
+              onAttachmentChange={setReplyFile}
+              bodyPlaceholder={
                 ticket.source === 'identity_verification'
                   ? 'Ask for more documents, or confirm what you received…'
                   : 'Write a response…'
               }
-              className="mt-2 w-full rounded-[10px] border border-[var(--figma-stroke)] bg-white p-3 text-sm"
             />
-            <button
-              type="submit"
-              disabled={!reply.trim() || sending}
-              className="mt-3 inline-flex h-10 items-center gap-2 rounded-[8px] bg-[var(--figma-brand)] px-4 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              <Send className="h-4 w-4" />
-              {sending ? 'Sending…' : 'Send reply'}
-            </button>
-          </form>
+          </div>
         ) : null}
       </section>
     </div>

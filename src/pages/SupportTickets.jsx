@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Eye, Paperclip } from 'lucide-react'
 import { usePaginatedList } from '../hooks/usePaginatedList'
 import { fetchSupportTickets } from '../services/support'
@@ -45,6 +45,11 @@ export default function SupportTickets() {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <Link to="/support-tickets/templates" className="text-sm font-semibold text-[var(--figma-brand)]">
+          Practitioner message templates
+        </Link>
+      </div>
       <section className="figma-card overflow-hidden">
         <div className="border-b border-[var(--figma-stroke)] bg-white px-4 py-4 sm:px-6">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -72,6 +77,7 @@ export default function SupportTickets() {
             >
               <option value="all">All types</option>
               <option value="identity_verification">Identity follow-up</option>
+              <option value="admin_outreach">Admin outreach</option>
             </select>
           </div>
         </div>
@@ -118,6 +124,7 @@ export default function SupportTickets() {
                         <div className="text-xs text-[var(--figma-text-muted)]">
                           {roleLabel(ticket.user?.role, 'User')}
                           {ticket.source === 'identity_verification' ? ' · Identity' : ''}
+                          {ticket.source === 'admin_outreach' ? ' · Outreach' : ''}
                         </div>
                       </td>
                       <td className="px-4 py-4 sm:px-6">
