@@ -8,10 +8,13 @@ import {
   Hash,
   Mail,
   MapPin,
+  MessageSquare,
+  Paperclip,
   Phone,
   Power,
   Star,
 } from 'lucide-react'
+import MessageComposer from '../components/MessageComposer'
 import ReasonModal from '../components/modals/ReasonModal'
 import LoadingState from '../components/states/LoadingState'
 import ErrorState from '../components/states/ErrorState'
@@ -30,6 +33,7 @@ import {
   sessionStatusLabel,
 } from '../lib/display'
 import { getErrorMessage } from '../lib/errors'
+import { getSupportTicketNumber } from '../lib/supportTicket'
 import {
   flattenPractitionerDetail,
   modalityLabel,
@@ -51,11 +55,12 @@ import {
   setCommissionOverride,
   suspendPractitioner,
 } from '../services/practitioners'
+import { createSupportTicket, fetchSupportTickets, uploadSupportAttachment } from '../services/support'
 
 export default function PractitionerDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { canWritePractitioners, canSuspendUsers, canOverrideCommission } = usePermissions()
+  const { canWritePractitioners, canSuspendUsers, canOverrideCommission, canWriteNotifications } = usePermissions()
 
   const [data, setData] = useState(null)
   const [override, setOverride] = useState(null)
@@ -73,6 +78,30 @@ export default function PractitionerDetail() {
   const [standingLoading, setStandingLoading] = useState(true)
   const [standingError, setStandingError] = useState('')
   const [resolveOpen, setResolveOpen] = useState(false)
+  const [messageOpen, setMessageOpen] = useState(false)
+  const [messageSubject, setMessageSubject] = useState('')
+  const [messageBody, setMessageBody] = useState('')
+  const [messageFile, setMessageFile] = useState(null)
+  const [sendingMessage, setSendingMessage] = useState(false)
+  const [tickets, setTickets] = useState([])
+  const [ticketsTotal, setTicketsTotal] = useState(0)
+  const [ticketsLoading, setTicketsLoading] = useState(true)
+  const [ticketsError, setTicketsError] = useState('')
+
+  const loadTickets = useCallback(async () => {
+    setTicketsError('')
+    try {
+      const result = await fetchSupportTickets({ userId: id, limit: 50, sort: 'updatedAt' })
+      setTickets(Array.isArray(result?.items) ? result.items : [])
+      setTicketsTotal(result?.pagination?.total ?? result?.items?.length ?? 0)
+    } catch (err) {
+      setTickets([])
+      setTicketsTotal(0)
+      setTicketsError(getErrorMessage(err, 'Could not load conversations.'))
+    } finally {
+      setTicketsLoading(false)
+    }
+  }, [id])
 
   const loadStanding = useCallback(async () => {
     setStandingError('')
@@ -122,6 +151,10 @@ export default function PractitionerDetail() {
   useEffect(() => {
     loadStanding()
   }, [loadStanding])
+
+  useEffect(() => {
+    loadTickets()
+  }, [loadTickets])
 
   const handleResolveStanding = useCallback(
     async (note) => {
@@ -297,6 +330,30 @@ export default function PractitionerDetail() {
     }
   }
 
+  async function onSendMessage() {
+    const subject = messageSubject.trim()
+    const message = messageBody.trim()
+    if (!subject || !message || sendingMessage) return
+    setSendingMessage(true)
+    setActionError('')
+    try {
+      let attachmentUrl
+      if (messageFile) {
+        attachmentUrl = await uploadSupportAttachment(messageFile, id)
+      }
+      await createSupportTicket({ userId: id, subject, message, attachmentUrl })
+      setMessageOpen(false)
+      setMessageSubject('')
+      setMessageBody('')
+      setMessageFile(null)
+      await loadTickets()
+    } catch (err) {
+      setActionError(getErrorMessage(err, 'Could not send message.'))
+    } finally {
+      setSendingMessage(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -380,8 +437,23 @@ export default function PractitionerDetail() {
                   />
                   <QuickStat label="Sessions" value={Number(totalSessions ?? 0).toLocaleString()} />
                 </div>
-                {(canWritePractitioners() || canOverrideCommission()) ? (
+                {(canWritePractitioners() || canOverrideCommission() || canWriteNotifications()) ? (
                   <div className="flex flex-wrap gap-2">
+                    {canWriteNotifications() ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMessageSubject('')
+                          setMessageBody('')
+                          setMessageFile(null)
+                          setMessageOpen(true)
+                        }}
+                        className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-[10px] bg-[var(--figma-brand)] px-4 text-[11px] font-semibold tracking-[0.14em] text-white hover:brightness-110"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        CONTACT PRACTITIONER
+                      </button>
+                    ) : null}
                     {canWritePractitioners() ? (
                       <button
                         type="button"
@@ -452,6 +524,38 @@ export default function PractitionerDetail() {
         onCancel={() => setResolveOpen(false)}
         onConfirm={handleResolveStanding}
       />
+      {messageOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[12px] bg-white p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-[var(--figma-text-strong)]">Contact {name}</h2>
+            <p className="mt-1 text-sm text-[var(--figma-text-muted)]">
+              Opens a support ticket they can reply to in the app. They also get an email with the ticket number and your message.
+            </p>
+            <div className="mt-5">
+              <MessageComposer
+                firstName={profile.firstName}
+                subject={messageSubject}
+                body={messageBody}
+                onSubjectChange={setMessageSubject}
+                onBodyChange={setMessageBody}
+                onSubmit={onSendMessage}
+                submitting={sendingMessage}
+                canManageTemplates
+                allowAttachments
+                attachmentFile={messageFile}
+                onAttachmentChange={setMessageFile}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setMessageOpen(false)}
+              className="mt-4 text-sm font-semibold text-[var(--figma-text)]"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
       <ModerateModal
         key={editOpen ? `mod-${id}` : 'mod-closed'}
         open={editOpen}
@@ -496,6 +600,24 @@ export default function PractitionerDetail() {
               onResolve={() => setResolveOpen(true)}
             />
           </div>
+
+          <ConversationHistory
+            tickets={tickets}
+            total={ticketsTotal}
+            loading={ticketsLoading}
+            error={ticketsError}
+            onRetry={loadTickets}
+            onContact={
+              canWriteNotifications()
+                ? () => {
+                    setMessageSubject('')
+                    setMessageBody('')
+                    setMessageFile(null)
+                    setMessageOpen(true)
+                  }
+                : undefined
+            }
+          />
 
           <div className="figma-card p-5 sm:p-6">
             <div className="text-sm font-semibold text-[var(--figma-text-strong)]">Professional Biography</div>
@@ -760,6 +882,98 @@ function InfoRow({ icon, label, mono = false }) {
         {label}
       </span>
     </span>
+  )
+}
+
+function ticketSourceLabel(ticket) {
+  if (ticket?.source === 'identity_verification') return 'Identity follow-up'
+  if (ticket?.source === 'admin_outreach' || ticket?.openedByAdmin) return 'Opened by support'
+  return 'Opened by practitioner'
+}
+
+function conversationStatusClass(status) {
+  const key = String(status || '').toLowerCase()
+  if (key === 'open') return 'bg-sky-100 text-sky-800'
+  if (key === 'in_progress') return 'bg-amber-100 text-amber-900'
+  if (key === 'resolved') return 'bg-emerald-100 text-emerald-800'
+  if (key === 'closed') return 'bg-slate-100 text-slate-700'
+  return 'bg-slate-100 text-slate-700'
+}
+
+function ConversationHistory({ tickets, total, loading, error, onRetry, onContact }) {
+  return (
+    <div id="correspondence" className="figma-card overflow-hidden scroll-mt-28">
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--figma-stroke)] bg-white px-5 py-4 sm:px-6">
+        <div>
+          <div className="text-sm font-semibold text-[var(--figma-text-strong)]">Correspondence</div>
+          <p className="mt-0.5 text-xs text-[var(--figma-text-muted)]">
+            Support tickets opened by this practitioner or by the team.
+          </p>
+        </div>
+        {onContact ? (
+          <button
+            type="button"
+            onClick={onContact}
+            className="text-xs font-semibold text-[var(--figma-brand)]"
+          >
+            New conversation
+          </button>
+        ) : null}
+      </div>
+      <div className="bg-white px-5 py-4 sm:px-6">
+        {loading ? (
+          <p className="text-sm text-[var(--figma-text-muted)]">Loading conversations…</p>
+        ) : error ? (
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-rose-700">{error}</p>
+            <button type="button" onClick={onRetry} className="text-xs font-semibold text-[var(--figma-brand)]">
+              Retry
+            </button>
+          </div>
+        ) : tickets.length === 0 ? (
+          <p className="text-sm text-[var(--figma-text-muted)]">No conversations yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {tickets.map((ticket) => (
+              <Link
+                key={ticket.id}
+                to={`/support-tickets/${ticket.id}`}
+                className="block rounded-[12px] border border-[var(--figma-stroke)] px-4 py-3 hover:bg-[rgba(244,243,241,0.55)]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-sm font-semibold text-[var(--figma-text-strong)]">
+                        {getSupportTicketNumber(ticket) ? `${getSupportTicketNumber(ticket)} · ` : ''}
+                        {ticket.subject}
+                      </span>
+                      {ticket.hasAttachment ? (
+                        <Paperclip className="h-3.5 w-3.5 shrink-0 text-[var(--figma-text-muted)]" />
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--figma-text-muted)]">
+                      {ticketSourceLabel(ticket)} · {ticket.replyCount ?? 0} replies ·{' '}
+                      {formatAdminDateTime(ticket.updatedAt || ticket.lastReplyAt || ticket.createdAt)}
+                    </p>
+                  </div>
+                  <span
+                    className={[
+                      'inline-flex shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize',
+                      conversationStatusClass(ticket.status),
+                    ].join(' ')}
+                  >
+                    {String(ticket.status || 'open').replace(/_/g, ' ')}
+                  </span>
+                </div>
+              </Link>
+            ))}
+            {total > tickets.length ? (
+              <p className="pt-1 text-xs text-[var(--figma-text-muted)]">Showing the {tickets.length} most recent of {total}.</p>
+            ) : null}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 

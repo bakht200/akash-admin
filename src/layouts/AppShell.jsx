@@ -102,6 +102,12 @@ const PAGE_META = [
     actions: null,
   },
   {
+    path: '/support-tickets/templates',
+    title: 'Message templates',
+    subtitle: 'Starting points for practitioner outreach. Edit anytime without a deploy.',
+    actions: null,
+  },
+  {
     path: '/support-tickets/:id',
     title: 'Support Ticket',
     subtitle: 'Review and respond to a user support request.',
@@ -145,6 +151,10 @@ function AppShellInner() {
 
     if (pathname.startsWith('/practitioners/')) {
       return PAGE_META.find((m) => m.path === '/practitioners/:id') ?? { title: 'Akash Admin', subtitle: '' }
+    }
+
+    if (pathname === '/support-tickets/templates') {
+      return PAGE_META.find((m) => m.path === '/support-tickets/templates') ?? { title: 'Message templates', subtitle: '' }
     }
 
     if (pathname.startsWith('/support-tickets/')) {
