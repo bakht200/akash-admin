@@ -309,3 +309,59 @@ export const SESSION_STATUS_OPTIONS = [
 export const CLIENT_STATUS_OPTIONS = ['active', 'suspended', 'dormant']
 
 export const PRACTITIONER_STATUS_OPTIONS = ['pending', 'onboarding', 'active', 'suspended', 'deleted']
+
+const ATTRIBUTION_STATUS_LABELS = {
+  pending_card_check: 'Pending card check',
+  confirmed: 'Confirmed',
+  reassigned: 'Reassigned',
+}
+
+const INVITE_ATTEMPT_REASON_LABELS = {
+  code_not_found: 'Code not found',
+  email_previously_used: 'Email previously used',
+  self_referral: 'Self-referral blocked',
+}
+
+export function attributionStatusLabel(status) {
+  const key = String(status ?? '')
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+  if (!key) return '—'
+  return ATTRIBUTION_STATUS_LABELS[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+export function attributionStatusClass(status) {
+  const key = String(status ?? '')
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+  switch (key) {
+    case 'confirmed':
+      return 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80'
+    case 'pending_card_check':
+      return 'bg-amber-50 text-amber-800 ring-1 ring-amber-200/80'
+    case 'reassigned':
+      return 'bg-slate-100 text-slate-700 ring-1 ring-slate-200/80'
+    default:
+      return 'bg-slate-100 text-slate-700'
+  }
+}
+
+export function attributionLaneLabel(lane) {
+  if (lane === 1) return 'Lane 1 (invite)'
+  if (lane === 2) return 'Lane 2 (Akash)'
+  return '—'
+}
+
+export function attributionLaneClass(lane) {
+  if (lane === 1) return 'bg-sky-50 text-sky-800 ring-1 ring-sky-200/80'
+  if (lane === 2) return 'bg-violet-50 text-violet-800 ring-1 ring-violet-200/80'
+  return 'bg-slate-100 text-slate-700'
+}
+
+export function inviteAttemptReasonLabel(reason) {
+  const key = String(reason ?? '')
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+  if (!key) return '—'
+  return INVITE_ATTEMPT_REASON_LABELS[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
