@@ -14,6 +14,7 @@ import {
   Power,
   Star,
 } from 'lucide-react'
+import InviteAttributionPanel from '../components/InviteAttributionPanel'
 import MessageComposer from '../components/MessageComposer'
 import ReasonModal from '../components/modals/ReasonModal'
 import LoadingState from '../components/states/LoadingState'
@@ -55,6 +56,7 @@ import {
   setCommissionOverride,
   suspendPractitioner,
 } from '../services/practitioners'
+import { fetchAttributions, patchAttribution } from '../services/attributions'
 import { createSupportTicket, fetchSupportTickets, uploadSupportAttachment } from '../services/support'
 
 export default function PractitionerDetail() {
@@ -87,6 +89,9 @@ export default function PractitionerDetail() {
   const [ticketsTotal, setTicketsTotal] = useState(0)
   const [ticketsLoading, setTicketsLoading] = useState(true)
   const [ticketsError, setTicketsError] = useState('')
+  const [attributions, setAttributions] = useState([])
+  const [attrLoading, setAttrLoading] = useState(true)
+  const [attrError, setAttrError] = useState('')
 
   const loadTickets = useCallback(async () => {
     setTicketsError('')
@@ -112,6 +117,21 @@ export default function PractitionerDetail() {
       setStandingError(getErrorMessage(err, 'Could not load standing.'))
     } finally {
       setStandingLoading(false)
+    }
+  }, [id])
+
+  const loadAttributions = useCallback(async () => {
+    setAttrError('')
+    try {
+      const data = await fetchAttributions({ practitionerId: id })
+      const rows = Array.isArray(data?.attributions) ? data.attributions : []
+      // Prefer server filter; keep a client-side guard for older API builds.
+      setAttributions(rows.filter((row) => row.practitionerId === id))
+    } catch (err) {
+      setAttributions([])
+      setAttrError(getErrorMessage(err, 'Could not load invited clients.'))
+    } finally {
+      setAttrLoading(false)
     }
   }, [id])
 
@@ -153,6 +173,10 @@ export default function PractitionerDetail() {
   }, [loadStanding])
 
   useEffect(() => {
+    loadAttributions()
+  }, [loadAttributions])
+
+  useEffect(() => {
     loadTickets()
   }, [loadTickets])
 
@@ -171,6 +195,23 @@ export default function PractitionerDetail() {
       }
     },
     [id, loadStanding],
+  )
+
+  const handleChangeAttributionLane = useCallback(
+    async (attributionId, lane, reason) => {
+      setBusy(true)
+      setActionError('')
+      try {
+        await patchAttribution(attributionId, { lane, reason })
+        await loadAttributions()
+      } catch (err) {
+        setActionError(getErrorMessage(err, 'Could not update attribution.'))
+        throw err
+      } finally {
+        setBusy(false)
+      }
+    },
+    [loadAttributions],
   )
 
   // Notification / queue links land on these anchors. The panels are not in
@@ -598,6 +639,18 @@ export default function PractitionerDetail() {
               canWrite={canWritePractitioners()}
               busy={busy}
               onResolve={() => setResolveOpen(true)}
+            />
+          </div>
+
+          <div id="invite-attribution" className="scroll-mt-28">
+            <InviteAttributionPanel
+              perspective="practitioner"
+              attributions={attributions}
+              loading={attrLoading}
+              error={attrError}
+              canWrite={canWritePractitioners()}
+              busy={busy}
+              onChangeLane={handleChangeAttributionLane}
             />
           </div>
 

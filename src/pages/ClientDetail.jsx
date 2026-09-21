@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Calendar, CircleSlash, Hash, Mail, Pencil, Power, Trash2 } from 'lucide-react'
+import InviteAttributionPanel from '../components/InviteAttributionPanel'
 import ReasonModal from '../components/modals/ReasonModal'
 import LoadingState from '../components/states/LoadingState'
 import ErrorState from '../components/states/ErrorState'
@@ -16,6 +17,7 @@ import {
 } from '../lib/display'
 import { getErrorMessage } from '../lib/errors'
 import { usePermissions } from '../hooks/usePermissions'
+import { fetchAttributions, patchAttribution } from '../services/attributions'
 import {
   createClientNote,
   deleteClientNote,
@@ -47,7 +49,7 @@ function Avatar({ name, className = 'h-16 w-16 text-lg' }) {
 
 export default function ClientDetail() {
   const { id } = useParams()
-  const { canWriteClients, canSuspendUsers } = usePermissions()
+  const { canWriteClients, canSuspendUsers, canReadPractitioners, canWritePractitioners } = usePermissions()
   const [client, setClient] = useState(null)
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -58,6 +60,10 @@ export default function ClientDetail() {
   const [noteOpen, setNoteOpen] = useState(false)
   const [actionError, setActionError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [attributions, setAttributions] = useState([])
+  const [rejectedAttempts, setRejectedAttempts] = useState([])
+  const [attrLoading, setAttrLoading] = useState(true)
+  const [attrError, setAttrError] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -74,9 +80,32 @@ export default function ClientDetail() {
     }
   }, [id])
 
+  const loadAttributions = useCallback(async () => {
+    setAttrError('')
+    try {
+      const data = await fetchAttributions({ clientId: id })
+      setAttributions(Array.isArray(data?.attributions) ? data.attributions : [])
+      setRejectedAttempts(Array.isArray(data?.rejectedAttempts) ? data.rejectedAttempts : [])
+    } catch (err) {
+      setAttributions([])
+      setRejectedAttempts([])
+      setAttrError(getErrorMessage(err, 'Could not load invite attribution.'))
+    } finally {
+      setAttrLoading(false)
+    }
+  }, [id])
+
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    if (!canReadPractitioners()) {
+      setAttrLoading(false)
+      return
+    }
+    loadAttributions()
+  }, [loadAttributions, canReadPractitioners])
 
   if (loading) return <LoadingState label="Loading client…" />
   if (error) return <ErrorState message={getErrorMessage(error, 'Could not load client.')} onRetry={load} />
@@ -153,6 +182,20 @@ export default function ClientDetail() {
       setNotes((prev) => prev.filter((n) => n.id !== noteId))
     } catch (err) {
       window.alert(getErrorMessage(err))
+    }
+  }
+
+  async function onChangeAttributionLane(attributionId, lane, reason) {
+    setBusy(true)
+    setActionError('')
+    try {
+      await patchAttribution(attributionId, { lane, reason })
+      await loadAttributions()
+    } catch (err) {
+      setActionError(getErrorMessage(err, 'Could not update attribution.'))
+      throw err
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -296,6 +339,21 @@ export default function ClientDetail() {
           <div className="mt-2 text-2xl font-semibold text-[var(--figma-brand)]">{spend.paymentCount ?? 0}</div>
         </div>
       </section>
+
+      {canReadPractitioners() ? (
+        <div id="invite-attribution" className="scroll-mt-28">
+          <InviteAttributionPanel
+            perspective="client"
+            attributions={attributions}
+            rejectedAttempts={rejectedAttempts}
+            loading={attrLoading}
+            error={attrError}
+            canWrite={canWritePractitioners()}
+            busy={busy}
+            onChangeLane={onChangeAttributionLane}
+          />
+        </div>
+      ) : null}
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="lg:col-span-8">
