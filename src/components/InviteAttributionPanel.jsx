@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import ReasonModal from '../modals/ReasonModal'
+import ReasonModal from './modals/ReasonModal'
 import {
   attributionLaneClass,
   attributionLaneLabel,
@@ -10,7 +10,7 @@ import {
   formatShortUuid,
   inviteAttemptReasonLabel,
   personName,
-} from '../../lib/display'
+} from '../lib/display'
 
 /**
  * Shows practitioner ↔ client invite attribution (Lane 1 / Lane 2).
